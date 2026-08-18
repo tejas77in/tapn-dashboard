@@ -82,6 +82,68 @@
   <div class="card"><div class="label">Net Profit (This Quarter)</div><div class="value" id="quarterlypnl">—</div></div>
 </div>
 
+<div class="cards">
+  <div class="card"><div class="label">Trades Taken</div><div class="value" id="tradestaken">—</div></div>
+  <div class="card"><div class="label">Open Positions</div><div class="value blue" id="openpositions">—</div></div>
+  <div class="card"><div class="label">Closed Positions</div><div class="value" id="closedpositionscount">—</div></div>
+  <div class="card"><div class="label">Win Rate</div><div class="value" id="winrate">—</div></div>
+</div>
+
+<h2>Month-End Account Value Projection <span style="font-weight:400;color:var(--dim);font-size:11px">(current net liq + expected value of positions open right now)</span></h2>
+<div class="cards" id="monthprojcards" style="display:none">
+  <div class="card"><div class="label">Worst Case</div><div class="value red" id="monthprojworst">—</div></div>
+  <div class="card"><div class="label">Expected (POP-weighted)</div><div class="value" id="monthprojexpected">—</div></div>
+  <div class="card"><div class="label">Best Case</div><div class="value green" id="monthprojbest">—</div></div>
+</div>
+<div id="monthprojcaveat" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 16px">
+  Not a forecast -- current net liq plus each currently-open position's expected outcome (POP x profit
+  target, weighted against (1-POP) x max loss). Does not assume any NEW trades between now and month-end;
+  recalculates automatically as positions close and new ones open. <span id="monthprojnote"></span>
+</div>
+
+<h2>SPX Forward Trader <span id="spxtrackrecord" style="font-weight:400;color:var(--dim);font-size:11px">—</span></h2>
+<div class="cards" id="spxopencards" style="display:none">
+  <div class="card"><div class="label">Status</div><div class="value" id="spxstatus">—</div></div>
+  <div class="card"><div class="label">Structure</div><div class="value" id="spxstructure" style="font-size:15px">—</div></div>
+  <div class="card"><div class="label">DTE</div><div class="value" id="spxdte">—</div></div>
+  <div class="card"><div class="label">Unrealized P&amp;L</div><div class="value" id="spxunrealized">—</div></div>
+  <div class="card"><div class="label">Entry Credit</div><div class="value" id="spxentrycredit">—</div></div>
+  <div class="card"><div class="label">Target Exit Debit</div><div class="value" id="spxtarget">—</div></div>
+</div>
+<div class="cards" id="spxriskcards" style="display:none">
+  <div class="card"><div class="label">Gamma Risk</div><div class="value" id="spxgammatier">—</div></div>
+  <div class="card"><div class="label">Delta</div><div class="value" id="spxdelta">—</div></div>
+  <div class="card"><div class="label">Gamma</div><div class="value" id="spxgamma">—</div></div>
+  <div class="card"><div class="label">Theta/day</div><div class="value" id="spxtheta">—</div></div>
+  <div class="card"><div class="label">Vega (per 1pt IV move)</div><div class="value" id="spxvega">—</div><div style="font-size:10px;color:var(--dim)" id="spxvega5pt">—</div></div>
+  <div class="card"><div class="label">VIX</div><div class="value" id="spxvix">—</div></div>
+</div>
+<div id="spxriskcaveat" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 12px">
+  Alert-only -- informational, does not affect the 50% profit target or circuit breaker. Vega is driven by
+  SPX's own implied vol (not VIX directly, though VIX is a reasonable proxy for it moving) -- shown per 1
+  point that IV moves, with a 5-point reference alongside since a single VIX-style spike often moves that far.
+</div>
+<div id="spxpnlattr" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 12px">
+  Rough P&amp;L breakdown (estimate, not precise): <span id="spxpnlattrtext">—</span>
+</div>
+<div id="spxstrikeproxline" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 8px">
+  Distance to short strikes: <span id="spxstrikeproxtext">—</span>
+</div>
+<div id="spxstrikeproxalert" style="display:none;background:rgba(248,81,73,0.1);border:1px solid var(--red);border-radius:8px;padding:10px 14px;margin:-4px 0 12px;font-size:12px">
+  ⚠️ <b>Spot is close to a short strike</b> -- <span id="spxstrikeproxdetail"></span>
+</div>
+<div id="spxgexwallline" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 8px">
+  Dealer gamma walls: <span id="spxgexwalltext">—</span>
+</div>
+<div id="spxgexwallalert" style="display:none;background:rgba(255,159,10,0.1);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;margin:-4px 0 12px;font-size:12px">
+  🧲 <b>Dealer gamma wall shifted since entry</b> -- <span id="spxgexwalldetail"></span>
+</div>
+<div id="spxnoposition" class="empty" style="display:none">No open SPX position -- checking for a new entry every 30 min while flat.</div>
+<table id="spxclosedtable">
+  <thead><tr><th></th><th>Regime</th><th>Legs (Call / Put)</th><th>Opened</th><th>Closed</th><th>Realized P&amp;L</th><th>Max Profit</th><th>% Booked</th><th>Exit Reason</th></tr></thead>
+  <tbody></tbody>
+</table>
+
 <h2>Closed Positions &mdash; Total Closed P&amp;L <span id="closedtotalpnl">—</span></h2>
 <table id="closedtable">
   <thead><tr><th>Position</th><th>Legs</th><th>Opened</th><th>Closed</th><th>Realized P&amp;L</th><th>Max Profit</th><th>% Booked</th></tr></thead>
@@ -90,9 +152,12 @@
 
 <h2>Portfolio Risk Profile <span style="font-weight:400;color:var(--dim);font-size:11px">(open MrWhales positions)</span></h2>
 <table id="riskprofiletable">
-  <thead><tr><th></th><th>Position</th><th>DTE</th><th>Pending P&amp;L</th><th>Max Loss</th><th>Max Profit</th><th>% Captured</th><th>POP</th><th>Theta/Day</th></tr></thead>
+  <thead><tr><th></th><th>Position</th><th>DTE</th><th>Pending P&amp;L</th><th>Max Loss</th><th>Max Profit</th><th>% Captured</th><th>POP</th><th>P(Max Loss)</th><th>Theta/Day</th><th>Gamma Risk</th></tr></thead>
   <tbody></tbody>
 </table>
+<div style="color:var(--dim);font-size:11px;margin:-4px 0 12px" id="mwriskcaveat">
+  Gamma Risk column is alert-only -- informational, does not affect the profit target or pre-earnings close. Blank = not yet computed for this position.
+</div>
 
 </div><!-- #dash-content -->
 
@@ -146,6 +211,35 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   $('commfeesytd').textContent = d.total_commission_fees_ytd != null ? money(d.total_commission_fees_ytd) : '—';
   $('settled').textContent = money(d.settled_funds);
   $('base').textContent = money(d.sizing_base ?? d.account_size);
+
+  if (d.trade_activity) {
+    const ta = d.trade_activity;
+    $('tradestaken').textContent = ta.trades_taken != null ? ta.trades_taken : '—';
+    $('openpositions').textContent = ta.open_count != null ? ta.open_count : '—';
+    $('closedpositionscount').textContent = ta.closed_count != null ? ta.closed_count : '—';
+    if (ta.win_rate_pct != null) {
+      $('winrate').textContent = ta.win_rate_pct.toFixed(1) + '% (' + ta.wins + 'W/' + ta.losses + 'L)';
+      $('winrate').className = 'value ' + (ta.win_rate_pct >= 50 ? 'green' : 'red');
+    } else {
+      $('winrate').textContent = '—';
+    }
+  }
+
+  const mep = d.month_end_projection;
+  if (mep && mep.expected != null && mep.best_case != null && mep.worst_case != null) {
+    $('monthprojworst').textContent = money(mep.worst_case);
+    $('monthprojexpected').textContent = money(mep.expected);
+    $('monthprojbest').textContent = money(mep.best_case);
+    $('monthprojcards').style.display = '';
+    $('monthprojcaveat').style.display = '';
+    const skipped = mep.positions_skipped || 0;
+    $('monthprojnote').textContent = skipped > 0
+      ? `(${skipped} open position(s) missing POP/max-profit data this cycle -- assumed no further change.)`
+      : '';
+  } else {
+    $('monthprojcards').style.display = 'none';
+    $('monthprojcaveat').style.display = 'none';
+  }
 
   try {
     const ts = new Date(d.updated.replace(' ET','').replace(' ','T') + '-04:00');
@@ -225,8 +319,10 @@ window.toggleMwGroup = function(groupKey, headerEl) {
 
   const rpb = $('riskprofiletable').querySelector('tbody');
   if (!d.risk_profile || !d.risk_profile.length) {
-    rpb.innerHTML = '<tr><td colspan="9" class="empty">No open MrWhales positions</td></tr>';
+    rpb.innerHTML = '<tr><td colspan="11" class="empty">No open MrWhales positions</td></tr>';
   } else {
+    const mwByTicker = {};
+    (d.mrwhales_positions || []).forEach(mp => { mwByTicker[mp.ticker] = mp; });
     d.risk_profile.forEach(r => {
       const pnl = r.pnl;
       const pnlCls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
@@ -234,6 +330,14 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       const maxLossTxt = r.max_loss==null ? '—' : '-' + money(r.max_loss).replace('$-','$');
       const expiryFmt = r.expiry || '—';
       const dot = `<span class="risk-dot ${r.color}" title="${(r.note||'').replace(/"/g,'&quot;')}"></span>`;
+      const mw = mwByTicker[r.ticker];
+      const gammaRisk = mw && mw.risk && mw.risk.tier;
+      let gammaCell = '—';
+      if (gammaRisk) {
+        const gCls = mw.risk.tier === 'high' ? 'red' : mw.risk.tier === 'elevated' ? 'amber' : 'green';
+        const gTitle = (mw.risk.note || '').replace(/"/g,'&quot;');
+        gammaCell = `<span class="${gCls}" title="${gTitle}">${mw.risk.tier.toUpperCase()}</span>`;
+      }
       rpb.insertAdjacentHTML('beforeend',
         `<tr>
           <td>${dot}</td>
@@ -244,7 +348,148 @@ window.toggleMwGroup = function(groupKey, headerEl) {
           <td>${r.max_profit==null ? '—' : money(r.max_profit)}</td>
           <td>${r.capture_pct==null ? '—' : r.capture_pct+'%'}</td>
           <td>${r.pop==null ? '—' : r.pop+'%'}</td>
+          <td>${r.p_max_loss==null ? '—' : r.p_max_loss+'%'}</td>
           <td>${r.theta_per_day==null ? '—' : money(r.theta_per_day)}</td>
+          <td>${gammaCell}</td>
+        </tr>`);
+    });
+  }
+
+  const spx = d.spx || {open: null, closed: [], track_record: {}};
+  const tr = spx.track_record || {};
+  $('spxtrackrecord').textContent = tr.closed_count
+    ? `${tr.closed_count} closed, ${tr.win_rate_pct ?? '—'}% win rate, total P&L ${
+        (tr.total_pnl>=0?'+':'') + money(tr.total_pnl).replace('$-','-$')}`
+    : 'no closed trades yet';
+
+  if (spx.open) {
+    const p = spx.open;
+    $('spxopencards').style.display = '';
+    $('spxnoposition').style.display = 'none';
+    const liveTag = p.is_live ? '<span class="pill live">LIVE</span>' : '<span class="pill dry">paper</span>';
+    $('spxstatus').innerHTML = liveTag;
+    $('spxstructure').textContent = `${p.regime || '—'} -- C ${p.kc_s}/${p.kc_l}, P ${p.kp_s}/${p.kp_l} (exp ${p.expiry || '—'})`;
+    $('spxdte').textContent = p.dte_now ?? '—';
+    if (p.unrealized_pnl != null) {
+      const u = Number(p.unrealized_pnl);
+      $('spxunrealized').textContent = (u>=0?'+':'') + money(u).replace('$-','-$');
+      $('spxunrealized').className = 'value ' + (u>0?'green':u<0?'red':'');
+    } else {
+      $('spxunrealized').textContent = '— (quote unavailable)';
+      $('spxunrealized').className = 'value';
+    }
+    const qty = p.quantity || 1;
+    $('spxentrycredit').textContent = p.entry_credit_worst_case != null
+      ? money(p.entry_credit_worst_case * 100 * qty) + ` (${qty}x)` : '—';
+    $('spxtarget').textContent = p.profit_target_debit != null
+      ? '≤ ' + money(p.profit_target_debit * 100 * qty) : '—';
+
+    const risk = p.risk;
+    if (risk && risk.tier) {
+      $('spxriskcards').style.display = '';
+      $('spxriskcaveat').style.display = '';
+      const tierCls = risk.tier === 'high' ? 'red' : risk.tier === 'elevated' ? 'amber' : 'green';
+      $('spxgammatier').innerHTML = `<span class="${tierCls}">${risk.tier.toUpperCase()}</span>`;
+      $('spxgammatier').title = risk.note || '';
+      const g = risk.greeks || {};
+      $('spxdelta').textContent = g.delta ?? '—';
+      $('spxgamma').textContent = g.gamma ?? '—';
+      $('spxtheta').textContent = g.theta != null ? '$' + g.theta : '—';
+      $('spxvega').textContent = g.vega != null ? '$' + g.vega : '—';
+      $('spxvega5pt').textContent = g.vega != null ? `at 5pt move: ${g.vega>=0?'+':'-'}$${Math.abs(Math.round(g.vega*5)).toLocaleString()}` : '';
+      $('spxvix').textContent = risk.vix != null ? risk.vix.toFixed(2) : '—';
+    } else {
+      $('spxriskcards').style.display = 'none';
+      $('spxriskcaveat').style.display = 'none';
+    }
+
+    const attr = p.pnl_attribution;
+    if (attr) {
+      const fmt = v => (v>=0?'+':'-') + '$' + Math.abs(Math.round(v)).toLocaleString();
+      $('spxpnlattrtext').textContent =
+        `theta ${fmt(attr.theta_pnl)} (full-day rate) + vega ${fmt(attr.vega_pnl)} ` +
+        `(VIX ${attr.vix_entry.toFixed(2)}→${attr.vix_now.toFixed(2)}) + price/gamma/skew ${fmt(attr.price_gamma_skew_pnl)} ` +
+        `= unrealized P&L`;
+      $('spxpnlattr').style.display = '';
+    } else {
+      $('spxpnlattr').style.display = 'none';
+    }
+
+    const sp = p.strike_proximity;
+    if (sp && sp.spot != null) {
+      $('spxstrikeproxtext').textContent =
+        `call ${p.kc_s} (${sp.call_distance_pct != null ? sp.call_distance_pct + '%' : '—'} away), ` +
+        `put ${p.kp_s} (${sp.put_distance_pct != null ? sp.put_distance_pct + '%' : '—'} away) -- spot ${sp.spot}`;
+      $('spxstrikeproxline').style.display = '';
+    } else {
+      $('spxstrikeproxline').style.display = 'none';
+    }
+    if (sp && (sp.near_call || sp.near_put)) {
+      const parts = [];
+      if (sp.near_call) parts.push(`spot is only ${sp.call_distance_pct}% from your short call strike ${p.kc_s}`);
+      if (sp.near_put) parts.push(`spot is only ${sp.put_distance_pct}% from your short put strike ${p.kp_s}`);
+      $('spxstrikeproxdetail').textContent = parts.join('; ') + ' -- worth a manual look.';
+      $('spxstrikeproxalert').style.display = '';
+    } else {
+      $('spxstrikeproxalert').style.display = 'none';
+    }
+
+    const gw = p.gex_wall;
+    if (gw && (gw.call_wall != null || gw.put_wall != null)) {
+      const hasBaseline = gw.entry_call_wall != null || gw.entry_put_wall != null;
+      const baselineNote = hasBaseline ? '' : ' (no entry baseline for this trade -- opened before this was tracked)';
+      $('spxgexwalltext').textContent =
+        `call ${gw.call_wall ?? '—'}, put ${gw.put_wall ?? '—'}` +
+        (hasBaseline ? ` (at entry: call ${gw.entry_call_wall ?? '—'}, put ${gw.entry_put_wall ?? '—'})` : baselineNote);
+      $('spxgexwallline').style.display = '';
+    } else {
+      $('spxgexwallline').style.display = 'none';
+    }
+
+    if (gw && (gw.call_shifted || gw.put_shifted)) {
+      const parts = [];
+      if (gw.call_shifted) parts.push(`call wall ${gw.entry_call_wall} → ${gw.call_wall}`);
+      if (gw.put_shifted) parts.push(`put wall ${gw.entry_put_wall} → ${gw.put_wall}`);
+      $('spxgexwalldetail').textContent = parts.join(', ') +
+        ` (your strikes: call ${p.kc_s}/${p.kc_l}, put ${p.kp_s}/${p.kp_l})`;
+      $('spxgexwallalert').style.display = '';
+    } else {
+      $('spxgexwallalert').style.display = 'none';
+    }
+  } else {
+    $('spxopencards').style.display = 'none';
+    $('spxriskcards').style.display = 'none';
+    $('spxriskcaveat').style.display = 'none';
+    $('spxpnlattr').style.display = 'none';
+    $('spxstrikeproxline').style.display = 'none';
+    $('spxstrikeproxalert').style.display = 'none';
+    $('spxgexwallline').style.display = 'none';
+    $('spxgexwallalert').style.display = 'none';
+    $('spxnoposition').style.display = '';
+  }
+
+  const spxb = $('spxclosedtable').querySelector('tbody');
+  if (!spx.closed || !spx.closed.length) {
+    spxb.innerHTML = '<tr><td colspan="9" class="empty">No closed SPX trades yet</td></tr>';
+  } else {
+    spx.closed.forEach(c => {
+      const pnl = c.realized_pnl;
+      const pnlCls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
+      const pnlTxt = pnl==null ? '—' : (pnl>=0?'+':'') + money(pnl).replace('$-','-$');
+      const tag = c.is_live ? '<span class="pill live">LIVE</span>' : '<span class="pill dry">paper</span>';
+      const mpTxt = c.max_profit == null ? '—' : money(c.max_profit);
+      const pbTxt = c.pct_booked == null ? '—' : c.pct_booked + '%';
+      spxb.insertAdjacentHTML('beforeend',
+        `<tr>
+          <td>${tag}</td>
+          <td>${c.regime || '—'}</td>
+          <td>C ${c.kc_s}/${c.kc_l} &middot; P ${c.kp_s}/${c.kp_l}</td>
+          <td>${c.entry_date || '—'}</td>
+          <td>${c.exit_date || '—'}</td>
+          <td class="${pnlCls}">${pnlTxt}</td>
+          <td>${mpTxt}</td>
+          <td>${pbTxt}</td>
+          <td style="color:var(--dim);font-size:12px">${c.exit_reason || '—'}</td>
         </tr>`);
     });
   }
