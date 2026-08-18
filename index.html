@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<title>TAPN Trading Technologies</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --dim:#8b949e;
+          --green:#3fb950; --red:#f85149; --amber:#d29922; --blue:#58a6ff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--text); font:14px/1.5 -apple-system,'Segoe UI',sans-serif; padding:24px; }
+  h1 { font-size:18px; margin-bottom:4px; }
+  .sub { color:var(--dim); font-size:12px; margin-bottom:20px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:24px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .card .label { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+  .card .value { font-size:22px; font-weight:600; margin-top:4px; }
+  .green{color:var(--green)} .red{color:var(--red)} .amber{color:var(--amber)} .blue{color:var(--blue)}
+  h2 { font-size:14px; margin:20px 0 8px; color:var(--dim); }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  th,td { padding:8px 12px; text-align:left; font-size:13px; border-bottom:1px solid var(--border); }
+  th { color:var(--dim); font-weight:500; font-size:11px; text-transform:uppercase; }
+  tr:last-child td { border-bottom:none; }
+  .pill { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .pill.dry { background:#1f2d3d; color:var(--blue); }
+  .pill.live { background:#3d1f1f; color:var(--red); }
+  .pill.lead { background:#1f3d26; color:var(--green); }
+  tr.leader td:first-child { font-weight:700; }
+  .empty { color:var(--dim); padding:16px; text-align:center; }
+  .stale { background:#3d2c1f; border:1px solid var(--amber); color:var(--amber); padding:10px 14px; border-radius:8px; margin-bottom:16px; display:none; }
+  .mw-group-header:hover { background:#1c2128; }
+  .mw-toggle { display:inline-block; width:12px; color:var(--dim); }
+  tr.mw-child td:first-child { font-size:12px; }
+  .risk-dot { display:inline-block; width:10px; height:10px; border-radius:50%; }
+  .risk-dot.red { background:var(--red); }
+  .risk-dot.yellow { background:var(--amber); }
+  .risk-dot.green { background:var(--green); }
+  /* --- password gate (added for the published Vercel copy only -- not
+     present on the local dashboard.html bot.py serves. Client-side only,
+     meant to stop casual/accidental discovery of the link, not a real
+     security boundary. GATE_HASH below is a SHA-256 hex digest set via
+     set_password.sh -- see README.md -- the plaintext password is never
+     stored in this file or committed to git. --- */
+  #gate-overlay { position:fixed; inset:0; background:var(--bg); display:flex;
+    align-items:center; justify-content:center; z-index:9999; }
+  #gate-box { text-align:center; }
+  #gate-pw { padding:8px 12px; border-radius:6px; border:1px solid var(--border);
+    background:var(--card); color:var(--text); font-size:14px; }
+  #gate-btn { padding:8px 14px; border-radius:6px; border:none; background:var(--blue);
+    color:var(--bg); font-weight:600; cursor:pointer; margin-left:6px; }
+  #gate-err { color:var(--red); margin-top:8px; font-size:12px; height:14px; }
+</style>
+</head>
+<body>
+
+<div id="gate-overlay">
+  <div id="gate-box">
+    <div style="margin-bottom:12px;font-size:16px;">TAPN Trading Technologies</div>
+    <input id="gate-pw" type="password" placeholder="Password" autofocus>
+    <button id="gate-btn">Unlock</button>
+    <div id="gate-err"></div>
+  </div>
+</div>
+
+<div id="dash-content" style="display:none">
+
+<h1>TAPN Trading Technologies <span id="mode" class="pill dry">—</span></h1>
+<div class="sub">updated <span id="updated">—</span> · <span id="mkt">—</span></div>
+<div class="stale" id="stale">⚠ Data is stale — the bot may not be running. Check HEARTBEAT.txt / restart bot.py</div>
+
+<div class="cards">
+  <div class="card"><div class="label">Total Account Value</div><div class="value" id="acctvalue">—</div></div>
+  <div class="card"><div class="label">Net Liq</div><div class="value" id="netliq">—</div></div>
+  <div class="card"><div class="label">Realized P&amp;L (YTD, all trades)</div><div class="value" id="realizedytd">—</div></div>
+  <div class="card"><div class="label">Unrealized P&amp;L (all positions)</div><div class="value" id="unrealizedtotal">—</div></div>
+  <div class="card"><div class="label">Total Max Loss (Open Positions)</div><div class="value red" id="totalmaxlossopen">—</div></div>
+  <div class="card"><div class="label">Total Commission+Fees (YTD)</div><div class="value amber" id="commfeesytd">—</div></div>
+  <div class="card"><div class="label">Settled Funds</div><div class="value" id="settled">—</div></div>
+  <div class="card"><div class="label">Sizing Base</div><div class="value" id="base">—</div></div>
+  <div class="card"><div class="label">Net Profit (This Week)</div><div class="value" id="weeklypnl">—</div></div>
+  <div class="card"><div class="label">Net Profit (This Month)</div><div class="value" id="monthlypnl">—</div></div>
+  <div class="card"><div class="label">Net Profit (This Quarter)</div><div class="value" id="quarterlypnl">—</div></div>
+</div>
+
+<h2>Closed Positions &mdash; Total Closed P&amp;L <span id="closedtotalpnl">—</span></h2>
+<table id="closedtable">
+  <thead><tr><th>Position</th><th>Legs</th><th>Opened</th><th>Closed</th><th>Realized P&amp;L</th><th>Max Profit</th><th>% Booked</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>Portfolio Risk Profile <span style="font-weight:400;color:var(--dim);font-size:11px">(open MrWhales positions)</span></h2>
+<table id="riskprofiletable">
+  <thead><tr><th></th><th>Position</th><th>DTE</th><th>Pending P&amp;L</th><th>Max Loss</th><th>Max Profit</th><th>% Captured</th><th>POP</th><th>Theta/Day</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+</div><!-- #dash-content -->
+
+<script src="dashboard_data.js"></script>
+<script>
+window.toggleMwGroup = function(groupKey, headerEl) {
+  const rows = document.querySelectorAll('.mw-child-' + CSS.escape(groupKey));
+  const showing = rows.length && rows[0].style.display !== 'none';
+  rows.forEach(r => r.style.display = showing ? 'none' : '');
+  const arrow = headerEl.querySelector('.mw-toggle');
+  if (arrow) arrow.textContent = showing ? '▶' : '▼';
+};
+(function(){
+  const d = window.BOT_DATA;
+  const $ = id => document.getElementById(id);
+  if (!d) { $('stale').style.display='block'; $('stale').textContent='No data published yet.'; return; }
+  const money = v => (v==null||isNaN(v)) ? '—' : '$' + Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  $('mode').textContent = d.mode;
+  $('mode').className = 'pill ' + (d.mode==='LIVE' ? 'live' : 'dry');
+  $('updated').textContent = d.updated || '—';
+  $('mkt').textContent = d.market_open ? 'market OPEN' : 'market closed';
+  $('acctvalue').textContent = d.net_deposits != null ? money(d.net_deposits) : '—';
+  $('netliq').textContent = money(d.net_liq);
+  if (d.realized_pnl_ytd != null) {
+    const r = Number(d.realized_pnl_ytd);
+    $('realizedytd').textContent = (r>=0?'+':'') + money(r).replace('$-','-$');
+    $('realizedytd').className = 'value ' + (r>0?'green':r<0?'red':'');
+  } else {
+    $('realizedytd').textContent = '—';
+  }
+  [['weeklypnl','weekly_pnl'], ['monthlypnl','monthly_pnl'], ['quarterlypnl','quarterly_pnl']].forEach(([elId, field]) => {
+    const el = $(elId);
+    if (d[field] != null) {
+      const v = Number(d[field]);
+      el.textContent = (v>=0?'+':'') + money(v).replace('$-','-$');
+      el.className = 'value ' + (v>0?'green':v<0?'red':'');
+    } else {
+      el.textContent = '—';
+    }
+  });
+  if (d.unrealized_pnl_total != null) {
+    const u = Number(d.unrealized_pnl_total);
+    $('unrealizedtotal').textContent = (u>=0?'+':'') + money(u).replace('$-','-$');
+    $('unrealizedtotal').className = 'value ' + (u>0?'green':u<0?'red':'');
+  } else {
+    $('unrealizedtotal').textContent = '—';
+  }
+  $('totalmaxlossopen').textContent = d.total_max_loss_open != null
+    ? '-' + money(d.total_max_loss_open).replace('$-','$') : '—';
+  $('commfeesytd').textContent = d.total_commission_fees_ytd != null ? money(d.total_commission_fees_ytd) : '—';
+  $('settled').textContent = money(d.settled_funds);
+  $('base').textContent = money(d.sizing_base ?? d.account_size);
+
+  try {
+    const ts = new Date(d.updated.replace(' ET','').replace(' ','T') + '-04:00');
+    if (Date.now() - ts.getTime() > 15*60*1000) $('stale').style.display='block';
+  } catch(e){}
+
+  const ctb = $('closedtable').querySelector('tbody');
+  if (!d.closed_positions || !d.closed_positions.length) {
+    ctb.innerHTML = '<tr><td colspan="7" class="empty">No closed positions this year</td></tr>';
+    $('closedtotalpnl').textContent = money(0);
+  } else {
+    let closedTotal = 0;
+    const byTicker = new Map();
+    d.closed_positions.forEach(c => {
+      closedTotal += Number(c.pnl||0);
+      if (!byTicker.has(c.underlying)) byTicker.set(c.underlying, []);
+      byTicker.get(c.underlying).push(c);
+    });
+
+    const mpCell = c => c.max_profit==null
+      ? `<span title="${(c.skip_reason||'unknown').replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dotted var(--dim)">—</span>`
+      : money(c.max_profit);
+    const pbCell = c => c.pct_booked==null ? '—' : c.pct_booked + '%';
+
+    const childRow = c => {
+      const pnl = Number(c.pnl||0);
+      const cls = pnl>0?'green':pnl<0?'red':'';
+      const expiryFmt = c.expiry ? `20${c.expiry.slice(0,2)}-${c.expiry.slice(2,4)}-${c.expiry.slice(4,6)}` : '—';
+      return `<tr class="mw-child mw-child-closed-${c.underlying}" style="display:none">
+         <td style="padding-left:28px;color:var(--dim)">exp ${expiryFmt}</td><td>${c.leg_count}</td>
+         <td>${c.opened||'—'}</td><td>${c.closed||'—'}</td>
+         <td class="${cls}">${(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td>
+         <td>${mpCell(c)}</td><td>${pbCell(c)}</td></tr>`;
+    };
+
+    byTicker.forEach((clist, ticker) => {
+      if (clist.length === 1) {
+        const c = clist[0];
+        const pnl = Number(c.pnl||0);
+        const cls = pnl>0?'green':pnl<0?'red':'';
+        const expiryFmt = c.expiry ? `20${c.expiry.slice(0,2)}-${c.expiry.slice(2,4)}-${c.expiry.slice(4,6)}` : '—';
+        ctb.insertAdjacentHTML('beforeend',
+          `<tr><td>${c.underlying} (exp ${expiryFmt})</td><td>${c.leg_count}</td>
+           <td>${c.opened||'—'}</td><td>${c.closed||'—'}</td>
+           <td class="${cls}">${(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td>
+           <td>${mpCell(c)}</td><td>${pbCell(c)}</td></tr>`);
+        return;
+      }
+      const totalLegs = clist.reduce((s,c)=>s+Number(c.leg_count||0),0);
+      const totalPnl = clist.reduce((s,c)=>s+Number(c.pnl||0),0);
+      const known = clist.filter(c => c.max_profit != null);
+      const totalMaxProfit = known.length ? known.reduce((s,c)=>s+Number(c.max_profit||0),0) : null;
+      const pctBooked = (totalMaxProfit && totalMaxProfit > 0) ? Math.round(totalPnl/totalMaxProfit*1000)/10 : null;
+      const cls = totalPnl>0?'green':totalPnl<0?'red':'';
+      const isPartial = totalMaxProfit != null && known.length < clist.length;
+      const mpGroupCell = totalMaxProfit != null
+        ? money(totalMaxProfit) + (isPartial ? '*' : '')
+        : (() => {
+            const reasons = [...new Set(clist.map(c => c.skip_reason).filter(Boolean))].join(' | ');
+            return `<span title="${reasons.replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dotted var(--dim)">—</span>`;
+          })();
+      ctb.insertAdjacentHTML('beforeend',
+        `<tr class="mw-group-header" onclick="toggleMwGroup('closed-${ticker}', this)" style="cursor:pointer">
+         <td><span class="mw-toggle">▶</span> ${ticker} (${clist.length} trades)</td><td>${totalLegs}</td>
+         <td>—</td><td>—</td>
+         <td class="${cls}">${(totalPnl>=0?'+':'')+money(totalPnl).replace('$-','-$')}</td>
+         <td>${mpGroupCell}</td>
+         <td>${pctBooked==null?'—':pctBooked+'%'}</td></tr>`);
+      clist.forEach(c => ctb.insertAdjacentHTML('beforeend', childRow(c)));
+    });
+
+    closedTotal = Math.round(closedTotal * 100) / 100;
+    const totalEl = $('closedtotalpnl');
+    totalEl.textContent = (closedTotal>=0?'+':'') + money(closedTotal).replace('$-','-$');
+    totalEl.className = closedTotal>0?'green':closedTotal<0?'red':'';
+  }
+
+  const rpb = $('riskprofiletable').querySelector('tbody');
+  if (!d.risk_profile || !d.risk_profile.length) {
+    rpb.innerHTML = '<tr><td colspan="9" class="empty">No open MrWhales positions</td></tr>';
+  } else {
+    d.risk_profile.forEach(r => {
+      const pnl = r.pnl;
+      const pnlCls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
+      const pnlTxt = pnl==null ? '—' : (pnl>=0?'+':'') + money(pnl).replace('$-','-$');
+      const maxLossTxt = r.max_loss==null ? '—' : '-' + money(r.max_loss).replace('$-','$');
+      const expiryFmt = r.expiry || '—';
+      const dot = `<span class="risk-dot ${r.color}" title="${(r.note||'').replace(/"/g,'&quot;')}"></span>`;
+      rpb.insertAdjacentHTML('beforeend',
+        `<tr>
+          <td>${dot}</td>
+          <td>${r.ticker} ${r.direction ? '('+r.direction+', exp '+expiryFmt+')' : ''}</td>
+          <td>${r.dte ?? '—'}</td>
+          <td class="${pnlCls}">${pnlTxt}</td>
+          <td class="red">${maxLossTxt}</td>
+          <td>${r.max_profit==null ? '—' : money(r.max_profit)}</td>
+          <td>${r.capture_pct==null ? '—' : r.capture_pct+'%'}</td>
+          <td>${r.pop==null ? '—' : r.pop+'%'}</td>
+          <td>${r.theta_per_day==null ? '—' : money(r.theta_per_day)}</td>
+        </tr>`);
+    });
+  }
+})();
+</script>
+
+<script>
+// --- password gate logic ---
+// GATE_HASH is a SHA-256 hex digest of your chosen password, generated
+// locally via set_password.sh -- see README.md. Never commit the
+// plaintext password anywhere, only this hash.
+const GATE_HASH = "8a063043a4c9d6f7862be80d868477350f3bb6b5ff50f1edfe98d3ee0852ebb6";
+
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+function revealDashboard() {
+  document.getElementById('gate-overlay').style.display = 'none';
+  document.getElementById('dash-content').style.display = '';
+}
+async function tryUnlock() {
+  const pw = document.getElementById('gate-pw').value;
+  const hash = await sha256Hex(pw);
+  if (hash === GATE_HASH) {
+    sessionStorage.setItem('tapn_gate_ok', '1');
+    revealDashboard();
+  } else {
+    document.getElementById('gate-err').textContent = 'Incorrect password';
+  }
+}
+document.getElementById('gate-btn').addEventListener('click', tryUnlock);
+document.getElementById('gate-pw').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+if (sessionStorage.getItem('tapn_gate_ok') === '1') revealDashboard();
+</script>
+
+</body>
+</html>
