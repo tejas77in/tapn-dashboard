@@ -79,7 +79,6 @@
   <div class="card"><div class="label">Sizing Base</div><div class="value" id="base">—</div></div>
   <div class="card"><div class="label">Net Profit (This Week)</div><div class="value" id="weeklypnl">—</div></div>
   <div class="card"><div class="label">Net Profit (This Month)</div><div class="value" id="monthlypnl">—</div></div>
-  <div class="card"><div class="label">Net Profit (This Quarter)</div><div class="value" id="quarterlypnl">—</div></div>
 </div>
 
 <div class="cards">
@@ -189,7 +188,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   } else {
     $('realizedytd').textContent = '—';
   }
-  [['weeklypnl','weekly_pnl'], ['monthlypnl','monthly_pnl'], ['quarterlypnl','quarterly_pnl']].forEach(([elId, field]) => {
+  [['weeklypnl','weekly_pnl'], ['monthlypnl','monthly_pnl']].forEach(([elId, field]) => {
     const el = $(elId);
     if (d[field] != null) {
       const v = Number(d[field]);
