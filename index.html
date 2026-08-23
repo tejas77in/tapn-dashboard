@@ -35,6 +35,11 @@
   .risk-dot.red { background:var(--red); }
   .risk-dot.yellow { background:var(--amber); }
   .risk-dot.green { background:var(--green); }
+  /* 2026-08-23: origin badges (MrW/MrS/MrM), mirrors dashboard.html. */
+  .origin-badge { display:inline-block; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:.02em; }
+  .origin-MrW { background:#1f2d3d; color:var(--blue); }
+  .origin-MrS { background:#1f3d26; color:var(--green); }
+  .origin-MrM { background:#3d2c1f; color:var(--amber); }
   /* --- password gate (added for the published Vercel copy only -- not
      present on the local dashboard.html bot.py serves. Client-side only,
      meant to stop casual/accidental discovery of the link, not a real
@@ -81,11 +86,14 @@
   <div class="card"><div class="label">Net Profit (This Month)</div><div class="value" id="monthlypnl">—</div></div>
 </div>
 
+<!-- 2026-08-23: Trades Taken/Open Positions/Closed Positions tiles
+     removed, Win Rate split by origin, Weighted Win Rate added -- mirrors
+     dashboard.html exactly, see that file's comment. -->
 <div class="cards">
-  <div class="card"><div class="label">Trades Taken</div><div class="value" id="tradestaken">—</div></div>
-  <div class="card"><div class="label">Open Positions</div><div class="value blue" id="openpositions">—</div></div>
-  <div class="card"><div class="label">Closed Positions</div><div class="value" id="closedpositionscount">—</div></div>
-  <div class="card"><div class="label">Win Rate</div><div class="value" id="winrate">—</div></div>
+  <div class="card"><div class="label">Win Rate (MrWhales)</div><div class="value" id="winratemrw">—</div></div>
+  <div class="card"><div class="label">Win Rate (SPX)</div><div class="value" id="winratemrs">—</div></div>
+  <div class="card"><div class="label">Win Rate (Manual)</div><div class="value" id="winratemrm">—</div></div>
+  <div class="card"><div class="label">Weighted Win Rate (All)</div><div class="value" id="weightedwinrate">—</div></div>
 </div>
 
 <h2>Month-End Account Value Projection <span style="font-weight:400;color:var(--dim);font-size:11px">(current net liq + expected value of positions open right now)</span></h2>
@@ -143,9 +151,19 @@
   <tbody></tbody>
 </table>
 
+<!-- 2026-08-23: Open Positions -- unified across every real account
+     position with an Origin badge (MrW/MrS/MrM), per explicit request.
+     Mirrors dashboard.html's #opentable exactly -- see that file's
+     comment for the full rationale. -->
+<h2>Open Positions</h2>
+<table id="opentable">
+  <thead><tr><th>Origin</th><th>Position</th><th>Legs</th><th>Net Debit/Credit</th><th>Unrealized P&amp;L</th></tr></thead>
+  <tbody></tbody>
+</table>
+
 <h2>Closed Positions &mdash; Total Closed P&amp;L <span id="closedtotalpnl">—</span></h2>
 <table id="closedtable">
-  <thead><tr><th>Position</th><th>Legs</th><th>Opened</th><th>Closed</th><th>Realized P&amp;L</th><th>Max Profit</th><th>% Booked</th></tr></thead>
+  <thead><tr><th>Origin</th><th>Position</th><th>Legs</th><th>Opened</th><th>Closed</th><th>Realized P&amp;L</th><th>Max Profit</th><th>% Booked</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -211,16 +229,27 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   $('settled').textContent = money(d.settled_funds);
   $('base').textContent = money(d.sizing_base ?? d.account_size);
 
+  // 2026-08-23: mirrors dashboard.html exactly.
   if (d.trade_activity) {
     const ta = d.trade_activity;
-    $('tradestaken').textContent = ta.trades_taken != null ? ta.trades_taken : '—';
-    $('openpositions').textContent = ta.open_count != null ? ta.open_count : '—';
-    $('closedpositionscount').textContent = ta.closed_count != null ? ta.closed_count : '—';
-    if (ta.win_rate_pct != null) {
-      $('winrate').textContent = ta.win_rate_pct.toFixed(1) + '% (' + ta.wins + 'W/' + ta.losses + 'L)';
-      $('winrate').className = 'value ' + (ta.win_rate_pct >= 50 ? 'green' : 'red');
+    const wro = ta.win_rate_by_origin || {};
+    [['winratemrw','MrW'], ['winratemrs','MrS'], ['winratemrm','MrM']].forEach(([elId, origin]) => {
+      const s = wro[origin];
+      const el = $(elId);
+      if (s && s.win_rate_pct != null) {
+        el.textContent = s.win_rate_pct.toFixed(1) + '% (' + s.wins + 'W/' + s.losses + 'L)';
+        el.className = 'value ' + (s.win_rate_pct >= 50 ? 'green' : 'red');
+      } else {
+        el.textContent = '—';
+        el.className = 'value';
+      }
+    });
+    if (ta.weighted_win_rate_pct != null) {
+      $('weightedwinrate').textContent = ta.weighted_win_rate_pct.toFixed(1) + '% ('
+        + money(ta.gross_win) + ' won / ' + money(ta.gross_loss) + ' lost)';
+      $('weightedwinrate').className = 'value ' + (ta.weighted_win_rate_pct >= 50 ? 'green' : 'red');
     } else {
-      $('winrate').textContent = '—';
+      $('weightedwinrate').textContent = '—';
     }
   }
 
@@ -245,9 +274,41 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     if (Date.now() - ts.getTime() > 15*60*1000) $('stale').style.display='block';
   } catch(e){}
 
+  // 2026-08-23: Open Positions -- mirrors dashboard.html's #opentable
+  // exactly, see that file for the full rationale.
+  const badge = o => `<span class="origin-badge origin-${o||'MrM'}">${o||'MrM'}</span>`;
+  const otb = $('opentable').querySelector('tbody');
+  const openRows = [];
+  (d.mrwhales_positions || []).forEach(mp => {
+    const pnl = mp.unrealized;
+    const cls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
+    openRows.push(`<tr><td>${badge(mp.origin)}</td>
+       <td>${mp.ticker} ${mp.direction} ${mp.opt_type} ${mp.long_strike}/${mp.short_strike} (exp ${mp.expiry})</td>
+       <td>2</td><td>${money(mp.net_debit)}</td>
+       <td class="${cls}">${pnl==null?'—':(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td></tr>`);
+  });
+  if (d.spx && d.spx.open) {
+    const o = d.spx.open;
+    const pnl = o.pnl;
+    const cls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
+    openRows.push(`<tr><td>${badge(o.origin)}</td>
+       <td>SPX condor ${o.kc_s}/${o.kc_l}C - ${o.kp_s}/${o.kp_l}P (exp ${o.expiry})</td>
+       <td>4</td><td>${money(o.entry_credit_worst_case)}</td>
+       <td class="${cls}">${pnl==null?'—':(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td></tr>`);
+  }
+  (d.manual_open_positions || []).forEach(mo => {
+    const pnl = mo.unrealized;
+    const cls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
+    openRows.push(`<tr><td>${badge(mo.origin)}</td>
+       <td>${mo.underlying} (exp ${mo.expiry})</td>
+       <td>${mo.leg_count}</td><td>—</td>
+       <td class="${cls}">${pnl==null?'—':(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td></tr>`);
+  });
+  otb.innerHTML = openRows.length ? openRows.join('') : '<tr><td colspan="5" class="empty">No open positions</td></tr>';
+
   const ctb = $('closedtable').querySelector('tbody');
   if (!d.closed_positions || !d.closed_positions.length) {
-    ctb.innerHTML = '<tr><td colspan="7" class="empty">No closed positions this year</td></tr>';
+    ctb.innerHTML = '<tr><td colspan="8" class="empty">No closed positions this year</td></tr>';
     $('closedtotalpnl').textContent = money(0);
   } else {
     let closedTotal = 0;
@@ -268,6 +329,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       const cls = pnl>0?'green':pnl<0?'red':'';
       const expiryFmt = c.expiry ? `20${c.expiry.slice(0,2)}-${c.expiry.slice(2,4)}-${c.expiry.slice(4,6)}` : '—';
       return `<tr class="mw-child mw-child-closed-${c.underlying}" style="display:none">
+         <td></td>
          <td style="padding-left:28px;color:var(--dim)">exp ${expiryFmt}</td><td>${c.leg_count}</td>
          <td>${c.opened||'—'}</td><td>${c.closed||'—'}</td>
          <td class="${cls}">${(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td>
@@ -281,7 +343,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         const cls = pnl>0?'green':pnl<0?'red':'';
         const expiryFmt = c.expiry ? `20${c.expiry.slice(0,2)}-${c.expiry.slice(2,4)}-${c.expiry.slice(4,6)}` : '—';
         ctb.insertAdjacentHTML('beforeend',
-          `<tr><td>${c.underlying} (exp ${expiryFmt})</td><td>${c.leg_count}</td>
+          `<tr><td>${badge(c.origin)}</td><td>${c.underlying} (exp ${expiryFmt})</td><td>${c.leg_count}</td>
            <td>${c.opened||'—'}</td><td>${c.closed||'—'}</td>
            <td class="${cls}">${(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td>
            <td>${mpCell(c)}</td><td>${pbCell(c)}</td></tr>`);
@@ -300,8 +362,10 @@ window.toggleMwGroup = function(groupKey, headerEl) {
             const reasons = [...new Set(clist.map(c => c.skip_reason).filter(Boolean))].join(' | ');
             return `<span title="${reasons.replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dotted var(--dim)">—</span>`;
           })();
+      const groupOrigins = [...new Set(clist.map(c => c.origin || 'MrM'))];
       ctb.insertAdjacentHTML('beforeend',
         `<tr class="mw-group-header" onclick="toggleMwGroup('closed-${ticker}', this)" style="cursor:pointer">
+         <td>${groupOrigins.map(badge).join(' ')}</td>
          <td><span class="mw-toggle">▶</span> ${ticker} (${clist.length} trades)</td><td>${totalLegs}</td>
          <td>—</td><td>—</td>
          <td class="${cls}">${(totalPnl>=0?'+':'')+money(totalPnl).replace('$-','-$')}</td>
