@@ -108,7 +108,9 @@
   recalculates automatically as positions close and new ones open. <span id="monthprojnote"></span>
 </div>
 
-<h2>SPX Forward Trader <span id="spxtrackrecord" style="font-weight:400;color:var(--dim);font-size:11px">—</span></h2>
+<!-- 2026-08-23: header + track-record line and "no open position"
+     placeholder removed -- mirrors dashboard.html, see that file's comment. -->
+<span id="spxtrackrecord" style="display:none"></span>
 <div class="cards" id="spxopencards" style="display:none">
   <div class="card"><div class="label">Status</div><div class="value" id="spxstatus">—</div></div>
   <div class="card"><div class="label">Structure</div><div class="value" id="spxstructure" style="font-size:15px">—</div></div>
@@ -145,21 +147,15 @@
 <div id="spxgexwallalert" style="display:none;background:rgba(255,159,10,0.1);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;margin:-4px 0 12px;font-size:12px">
   🧲 <b>Dealer gamma wall shifted since entry</b> -- <span id="spxgexwalldetail"></span>
 </div>
-<div id="spxnoposition" class="empty" style="display:none">No open SPX position -- checking for a new entry every 30 min while flat.</div>
+<span id="spxnoposition" style="display:none"></span>
 <!-- 2026-08-23: standalone SPX Closed table removed -- SPX's real closed
      trades now appear as MrS-tagged rows in the unified Closed Positions
      table instead. Mirrors dashboard.html. -->
 
 
-<!-- 2026-08-23: Open Positions -- unified across every real account
-     position with an Origin badge (MrW/MrS/MrM), per explicit request.
-     Mirrors dashboard.html's #opentable exactly -- see that file's
-     comment for the full rationale. -->
-<h2>Open Positions</h2>
-<table id="opentable">
-  <thead><tr><th>Origin</th><th>Position</th><th>Legs</th><th>Net Debit/Credit</th><th>Unrealized P&amp;L</th></tr></thead>
-  <tbody></tbody>
-</table>
+<!-- 2026-08-23: Open Positions table removed per explicit request --
+     Portfolio Risk Profile below already covers open-position visibility.
+     Mirrors dashboard.html. -->
 
 <h2>Closed Positions &mdash; Total Closed P&amp;L <span id="closedtotalpnl">—</span></h2>
 <table id="closedtable">
@@ -167,9 +163,9 @@
   <tbody></tbody>
 </table>
 
-<h2>Portfolio Risk Profile <span style="font-weight:400;color:var(--dim);font-size:11px">(open MrWhales positions)</span></h2>
+<h2>Portfolio Risk Profile <span style="font-weight:400;color:var(--dim);font-size:11px">(every open position -- MrW/MrS/MrM)</span></h2>
 <table id="riskprofiletable">
-  <thead><tr><th></th><th>Position</th><th>DTE</th><th>Pending P&amp;L</th><th>Max Loss</th><th>Max Profit</th><th>% Captured</th><th>POP</th><th>P(Max Loss)</th><th>Theta/Day</th><th>Gamma Risk</th></tr></thead>
+  <thead><tr><th>Origin</th><th></th><th>Position</th><th>DTE</th><th>Pending P&amp;L</th><th>Max Loss</th><th>Max Profit</th><th>% Captured</th><th>POP</th><th>P(Max Loss)</th><th>Theta/Day</th><th>Gamma Risk</th></tr></thead>
   <tbody></tbody>
 </table>
 <div style="color:var(--dim);font-size:11px;margin:-4px 0 12px" id="mwriskcaveat">
@@ -274,37 +270,9 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     if (Date.now() - ts.getTime() > 15*60*1000) $('stale').style.display='block';
   } catch(e){}
 
-  // 2026-08-23: Open Positions -- mirrors dashboard.html's #opentable
-  // exactly, see that file for the full rationale.
+  // 2026-08-23: Open Positions table removed per explicit request --
+  // `badge` is still needed below for the Closed Positions Origin column.
   const badge = o => `<span class="origin-badge origin-${o||'MrM'}">${o||'MrM'}</span>`;
-  const otb = $('opentable').querySelector('tbody');
-  const openRows = [];
-  (d.mrwhales_positions || []).forEach(mp => {
-    const pnl = mp.unrealized;
-    const cls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
-    openRows.push(`<tr><td>${badge(mp.origin)}</td>
-       <td>${mp.ticker} ${mp.direction} ${mp.opt_type} ${mp.long_strike}/${mp.short_strike} (exp ${mp.expiry})</td>
-       <td>2</td><td>${money(mp.net_debit)}</td>
-       <td class="${cls}">${pnl==null?'—':(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td></tr>`);
-  });
-  if (d.spx && d.spx.open) {
-    const o = d.spx.open;
-    const pnl = o.pnl;
-    const cls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
-    openRows.push(`<tr><td>${badge(o.origin)}</td>
-       <td>SPX condor ${o.kc_s}/${o.kc_l}C - ${o.kp_s}/${o.kp_l}P (exp ${o.expiry})</td>
-       <td>4</td><td>${money(o.entry_credit_worst_case)}</td>
-       <td class="${cls}">${pnl==null?'—':(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td></tr>`);
-  }
-  (d.manual_open_positions || []).forEach(mo => {
-    const pnl = mo.unrealized;
-    const cls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
-    openRows.push(`<tr><td>${badge(mo.origin)}</td>
-       <td>${mo.underlying} (exp ${mo.expiry})</td>
-       <td>${mo.leg_count}</td><td>—</td>
-       <td class="${cls}">${pnl==null?'—':(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td></tr>`);
-  });
-  otb.innerHTML = openRows.length ? openRows.join('') : '<tr><td colspan="5" class="empty">No open positions</td></tr>';
 
   const ctb = $('closedtable').querySelector('tbody');
   if (!d.closed_positions || !d.closed_positions.length) {
@@ -382,7 +350,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
 
   const rpb = $('riskprofiletable').querySelector('tbody');
   if (!d.risk_profile || !d.risk_profile.length) {
-    rpb.innerHTML = '<tr><td colspan="11" class="empty">No open MrWhales positions</td></tr>';
+    rpb.innerHTML = '<tr><td colspan="12" class="empty">No open positions</td></tr>';
   } else {
     const mwByTicker = {};
     (d.mrwhales_positions || []).forEach(mp => { mwByTicker[mp.ticker] = mp; });
@@ -403,6 +371,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       }
       rpb.insertAdjacentHTML('beforeend',
         `<tr>
+          <td>${badge(r.origin)}</td>
           <td>${dot}</td>
           <td>${r.ticker} ${r.direction ? '('+r.direction+', exp '+expiryFmt+')' : ''}</td>
           <td>${r.dte ?? '—'}</td>
