@@ -146,10 +146,10 @@
   🧲 <b>Dealer gamma wall shifted since entry</b> -- <span id="spxgexwalldetail"></span>
 </div>
 <div id="spxnoposition" class="empty" style="display:none">No open SPX position -- checking for a new entry every 30 min while flat.</div>
-<table id="spxclosedtable">
-  <thead><tr><th></th><th>Regime</th><th>Legs (Call / Put)</th><th>Opened</th><th>Closed</th><th>Realized P&amp;L</th><th>Max Profit</th><th>% Booked</th><th>Exit Reason</th></tr></thead>
-  <tbody></tbody>
-</table>
+<!-- 2026-08-23: standalone SPX Closed table removed -- SPX's real closed
+     trades now appear as MrS-tagged rows in the unified Closed Positions
+     table instead. Mirrors dashboard.html. -->
+
 
 <!-- 2026-08-23: Open Positions -- unified across every real account
      position with an Origin badge (MrW/MrS/MrM), per explicit request.
@@ -531,31 +531,8 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     $('spxnoposition').style.display = '';
   }
 
-  const spxb = $('spxclosedtable').querySelector('tbody');
-  if (!spx.closed || !spx.closed.length) {
-    spxb.innerHTML = '<tr><td colspan="9" class="empty">No closed SPX trades yet</td></tr>';
-  } else {
-    spx.closed.forEach(c => {
-      const pnl = c.realized_pnl;
-      const pnlCls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
-      const pnlTxt = pnl==null ? '—' : (pnl>=0?'+':'') + money(pnl).replace('$-','-$');
-      const tag = c.is_live ? '<span class="pill live">LIVE</span>' : '<span class="pill dry">paper</span>';
-      const mpTxt = c.max_profit == null ? '—' : money(c.max_profit);
-      const pbTxt = c.pct_booked == null ? '—' : c.pct_booked + '%';
-      spxb.insertAdjacentHTML('beforeend',
-        `<tr>
-          <td>${tag}</td>
-          <td>${c.regime || '—'}</td>
-          <td>C ${c.kc_s}/${c.kc_l} &middot; P ${c.kp_s}/${c.kp_l}</td>
-          <td>${c.entry_date || '—'}</td>
-          <td>${c.exit_date || '—'}</td>
-          <td class="${pnlCls}">${pnlTxt}</td>
-          <td>${mpTxt}</td>
-          <td>${pbTxt}</td>
-          <td style="color:var(--dim);font-size:12px">${c.exit_reason || '—'}</td>
-        </tr>`);
-    });
-  }
+  // 2026-08-23: standalone SPX Closed table removed -- mirrors
+  // dashboard.html, see that file's comment.
 })();
 </script>
 
