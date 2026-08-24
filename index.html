@@ -103,8 +103,11 @@
   <div class="card"><div class="label">Best Case</div><div class="value green" id="monthprojbest">—</div></div>
 </div>
 <div id="monthprojcaveat" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 16px">
-  Not a forecast -- current net liq plus each currently-open position's expected outcome (POP x profit
-  target, weighted against (1-POP) x max loss). Does not assume any NEW trades between now and month-end;
+  Not a forecast -- current net liq plus each currently-open position's expected move to month-end. A
+  position that actually expires by then uses its full POP-weighted outcome (POP x profit target, weighted
+  against (1-POP) x max loss); a position with more DTE than days left in the month can't resolve by
+  month-end, so it's modeled on theta decay instead, with best/worst case scaled to how much of its
+  remaining life falls within this window. Does not assume any NEW trades between now and month-end;
   recalculates automatically as positions close and new ones open. <span id="monthprojnote"></span>
 </div>
 
@@ -257,9 +260,11 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     $('monthprojcards').style.display = '';
     $('monthprojcaveat').style.display = '';
     const skipped = mep.positions_skipped || 0;
-    $('monthprojnote').textContent = skipped > 0
-      ? `(${skipped} open position(s) missing POP/max-profit data this cycle -- assumed no further change.)`
-      : '';
+    const partial = mep.positions_partial || 0;
+    const notes = [];
+    if (partial > 0) notes.push(`${partial} position(s) won't expire by month-end (${mep.days_to_month_end} day(s) left) -- modeled on theta decay, not full resolution.`);
+    if (skipped > 0) notes.push(`${skipped} open position(s) missing POP/max-profit data this cycle -- assumed no further change.`);
+    $('monthprojnote').textContent = notes.length ? '(' + notes.join(' ') + ')' : '';
   } else {
     $('monthprojcards').style.display = 'none';
     $('monthprojcaveat').style.display = 'none';
