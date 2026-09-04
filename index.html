@@ -35,7 +35,9 @@
   .risk-dot.red { background:var(--red); }
   .risk-dot.yellow { background:var(--amber); }
   .risk-dot.green { background:var(--green); }
-  /* 2026-08-23: origin badges (MrW/MrS/MrM), mirrors dashboard.html. */
+  /* 2026-08-23: origin badges (MrW/MrS/MrM) -- per explicit request
+     ("indicate who initiated it MrW/MrS/MrM") on the Open/Closed
+     Positions tables. */
   .origin-badge { display:inline-block; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:.02em; }
   .origin-MrW { background:#1f2d3d; color:var(--blue); }
   .origin-MrS { background:#1f3d26; color:var(--green); }
@@ -57,7 +59,6 @@
 </style>
 </head>
 <body>
-
 <div id="gate-overlay">
   <div id="gate-box">
     <div style="margin-bottom:12px;font-size:16px;">TAPN Trading Technologies</div>
@@ -76,26 +77,89 @@
 <div class="cards">
   <div class="card"><div class="label">Total Account Value</div><div class="value" id="acctvalue">—</div></div>
   <div class="card"><div class="label">Net Liq</div><div class="value" id="netliq">—</div></div>
+  <!-- 2026-07-27: real, account-wide (not just MrWhales) numbers pulled
+       directly from Tastytrade's own transaction history / positions --
+       per request "realized profit or loss (irrespective of the trade by
+       Mr whales or manual).. net liq, total commission and fees..
+       unrealized P&L". See bot.py's write_dashboard() for the exact
+       methodology (net-value already nets commission/fees in). -->
   <div class="card"><div class="label">Realized P&amp;L (YTD, all trades)</div><div class="value" id="realizedytd">—</div></div>
   <div class="card"><div class="label">Unrealized P&amp;L (all positions)</div><div class="value" id="unrealizedtotal">—</div></div>
+  <!-- 2026-08-04: sum of max_loss across every currently-open MrWhales
+       position (full premium paid, worst case if it expires worthless),
+       per request ("add a tile giving total max loss of current open
+       position next to unrealized P&L"). -->
   <div class="card"><div class="label">Total Max Loss (Open Positions)</div><div class="value red" id="totalmaxlossopen">—</div></div>
   <div class="card"><div class="label">Total Commission+Fees (YTD)</div><div class="value amber" id="commfeesytd">—</div></div>
   <div class="card"><div class="label">Settled Funds</div><div class="value" id="settled">—</div></div>
   <div class="card"><div class="label">Sizing Base</div><div class="value" id="base">—</div></div>
+  <!-- 2026-08-03: net profit (already commission/fee-netted, same
+       net-value methodology as Realized P&L YTD above) bucketed into
+       shorter windows, per request. See bot.py's write_dashboard()
+       for exact week/month boundary logic. Quarter tile removed
+       2026-08-18 per request. -->
   <div class="card"><div class="label">Net Profit (This Week)</div><div class="value" id="weeklypnl">—</div></div>
   <div class="card"><div class="label">Net Profit (This Month)</div><div class="value" id="monthlypnl">—</div></div>
 </div>
 
-<!-- 2026-08-23: Trades Taken/Open Positions/Closed Positions tiles
-     removed, Win Rate split by origin, Weighted Win Rate added -- mirrors
-     dashboard.html exactly, see that file's comment. -->
+<!-- 2026-08-14: Trade Activity tile row -- per request "add a tile showing
+     how many trades taken. how many open, how many close.. win rate".
+     Same account-wide, Tastytrade-transaction-verified numbers as the
+     Closed Positions table below (d.trade_activity, computed once in
+     bot.py's write_dashboard() -- see _compute_realized_pnl_summary()) --
+     can never disagree with that table's own total or with Slack's daily
+     summary, which now shares this exact same source. -->
 <div class="cards">
+  <!-- 2026-08-23: per explicit request ("Trades Taken/Open Positions/
+       Closed Positions" removed; Win Rate split by origin -- "MR M, MR S
+       and MR W marked separately.. Total weighted Win Rate should be a
+       mix of MR W, MR S and MR M"). Per-origin stats (d.trade_activity.
+       win_rate_by_origin, bot.py's write_dashboard()) -- MrW/MrM sourced
+       from the real Tastytrade transaction reconstruction, MrS sourced
+       from spx_snapshot's own closed trades (a separate source since the
+       reconstruction doesn't yet handle SPX's roll/cash-settlement
+       lifecycle -- see 2026-08-23 chat). Overall Weighted Win Rate below
+       is computed from all three combined, so it's a real mix, not
+       silently missing SPX. -->
   <div class="card"><div class="label">Win Rate (MrWhales)</div><div class="value" id="winratemrw">—</div></div>
   <div class="card"><div class="label">Win Rate (SPX)</div><div class="value" id="winratemrs">—</div></div>
   <div class="card"><div class="label">Win Rate (Manual)</div><div class="value" id="winratemrm">—</div></div>
+  <!-- 2026-08-21: per explicit request/example ("8 wins of $100 vs 2
+       losses of $1000... 80% [count-based] win rate might not make
+       sense... profit loss weighted win rate... efficiency of the
+       trade") -- gross $ from wins / (gross $ from wins + gross $ from
+       losses), NOT count-based, so a few big losers outweighing many
+       small winners shows up here even when Win Rate still looks great.
+       (d.trade_activity.weighted_win_rate_pct, bot.py's write_dashboard())
+       -- 2026-08-23: now a real mix of MrW+MrS+MrM (see above), can never
+       disagree with the three per-origin tiles or Realized P&L YTD. -->
   <div class="card"><div class="label">Weighted Win Rate (All)</div><div class="value" id="weightedwinrate">—</div></div>
+  <!-- 2026-08-21: per explicit request ("add this to dashboard next to
+       weighted win rate and call it drawdown alert") -- MrWhales-ONLY
+       today's realized+unrealized P&L as a % of net-liq, SAME exact math
+       as mrwhales_trader.py's own shadow-mode Slack alert
+       (_check_drawdown_throttle_alert()), so this tile can never disagree
+       with what actually posts to Slack. Deliberately kept separate from
+       the account-wide Day P&L tile above -- a big SPX gain can make the
+       account look healthy while MrWhales sits in a real, un-recovered
+       drawdown (confirmed live 2026-08-21: MrWhales ranged -$2,400 to
+       -$3,200 all session while account-wide P&L looked fine on SPX's
+       gain alone). (d.mrwhales_drawdown, bot.py's write_dashboard()) --
+       alert-only/informational, same as the Slack alert itself: never
+       pauses trading, just visibility. -->
+  <div class="card"><div class="label">Drawdown Alert (MrWhales)</div><div class="value" id="drawdownalert">—</div></div>
 </div>
 
+<!-- 2026-08-17: month-end account value projection, per explicit request
+     ("add a prediction on what will be the account size by end of
+     current month"). d.month_end_projection (bot.py's write_dashboard()).
+     Recalculated fresh every cycle -- per follow-up ("it will have to be
+     updated daily based on new trades") this deliberately does NOT try to
+     forecast trades that haven't opened yet; any new trade opened
+     tomorrow just flows into tomorrow's numbers on its own. Shows a
+     best/worst RANGE (not a single number) since options P&L is
+     genuinely uncertain -- per explicit request ("best/worst case
+     range"), to avoid implying false precision. -->
 <h2>Month-End Account Value Projection <span style="font-weight:400;color:var(--dim);font-size:11px">(current net liq + expected value of positions open right now)</span></h2>
 <div class="cards" id="monthprojcards" style="display:none">
   <div class="card"><div class="label">Worst Case</div><div class="value red" id="monthprojworst">—</div></div>
@@ -111,8 +175,27 @@
   recalculates automatically as positions close and new ones open. <span id="monthprojnote"></span>
 </div>
 
-<!-- 2026-08-23: header + track-record line and "no open position"
-     placeholder removed -- mirrors dashboard.html, see that file's comment. -->
+<!-- 2026-08-18: moved above Closed Positions (previously below Portfolio
+     Risk Profile, above Closed Positions in creation order) per explicit
+     request ("bring SPX forward above closed position but below month-end
+     account projections") -- section content/ids unchanged, only its
+     position in the page moved. -->
+<!-- 2026-08-17: SPX forward trader section -- per explicit request ("did
+     you update the dashboard too?" -> "yes"), added the same day the
+     strategy went LIVE on Tastytrade. d.spx (bot.py's write_dashboard() ->
+     spx_forward_test.dashboard_snapshot()) carries the open position (with
+     a live unrealized P&L, priced via the exact same functions
+     manage_open_position() uses to decide the real exit -- so this can
+     never disagree with what the bot itself is watching), the closed
+     trade history, and a track-record summary (win rate/total P&L). The
+     "LIVE"/"paper" pill on each row distinguishes real Tastytrade fills
+     from any pre-2026-08-17 paper rows or SPX_LIVE=0 runs. -->
+<!-- 2026-08-23: header + track-record line and the "no open position"
+     placeholder removed per explicit request ("remove this lines to free
+     up dashboard space") -- SPX's closed-trade P&L is already visible in
+     the unified Closed Positions table (MrS rows) and Win Rate (SPX)
+     tile. Open-position status/risk cards below are untouched -- they
+     only render when a real SPX position is open. -->
 <span id="spxtrackrecord" style="display:none"></span>
 <div class="cards" id="spxopencards" style="display:none">
   <div class="card"><div class="label">Status</div><div class="value" id="spxstatus">—</div></div>
@@ -122,6 +205,10 @@
   <div class="card"><div class="label">Entry Credit</div><div class="value" id="spxentrycredit">—</div></div>
   <div class="card"><div class="label">Target Exit Debit</div><div class="value" id="spxtarget">—</div></div>
 </div>
+<!-- 2026-08-17: gamma/VIX risk model -- ALERT-ONLY (see spx_greeks.py's
+     module docstring). d.spx.open.risk (bot.py's write_dashboard() ->
+     spx_forward_test.dashboard_snapshot()) -- same read a Slack alert
+     would be based on. Never affects the position's own management. -->
 <div class="cards" id="spxriskcards" style="display:none">
   <div class="card"><div class="label">Gamma Risk</div><div class="value" id="spxgammatier">—</div></div>
   <div class="card"><div class="label">Delta</div><div class="value" id="spxdelta">—</div></div>
@@ -135,9 +222,46 @@
   SPX's own implied vol (not VIX directly, though VIX is a reasonable proxy for it moving) -- shown per 1
   point that IV moves, with a 5-point reference alongside since a single VIX-style spike often moves that far.
 </div>
+<!-- 2026-08-17: rough unrealized P&L attribution, per explicit request
+     ("theta is already $218... why is the position in a loss of $135?").
+     d.spx.open.pnl_attribution (spx_forward_test.dashboard_snapshot()) --
+     a first-order estimate, NOT a precise decomposition: vega_pnl = vega x
+     (VIX now - VIX at entry), theta_pnl = today's theta figure (whole-
+     position, already $-scaled -- note this is the full daily RATE, not
+     partial-day-realized decay, since there's no clean way to isolate that
+     from one snapshot), and price/gamma/skew = whatever's left over
+     (unrealized P&L minus the other two) -- folds in the spot move AND any
+     bid/ask/skew noise a simple greek read can't cleanly separate, labeled
+     as such rather than claimed to be pure gamma. -->
 <div id="spxpnlattr" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 12px">
   Rough P&amp;L breakdown (estimate, not precise): <span id="spxpnlattrtext">—</span>
 </div>
+<!-- 2026-08-17: dealer gamma / GEX wall -- ALERT-ONLY, per explicit
+     request ("add gamma / dealer positioning at entry and if that changed
+     should alert on slack and dashboard"). d.spx.open.gex_wall (bot.py's
+     write_dashboard() -> spx_forward_test.dashboard_snapshot()). Distinct
+     from the greeks cards above (your position) -- this is DEALER
+     positioning in the underlying.
+
+     spxgexwallline (always visible when a position is open): the CURRENT
+     live call/put wall reading every cycle, regardless of whether a
+     shift has been detected -- added same day as the shift banner below,
+     per follow-up request ("add an always-visible line") after trade #3
+     (opened before this feature existed, so it has no entry_call_wall/
+     entry_put_wall baseline) showed nothing at all since the shift
+     banner only fires on a DETECTED change, which is structurally
+     impossible without a baseline to compare against.
+
+     spxgexwallalert (only shown once a real shift IS detected): the
+     highlighted before/after banner -- unaffected by this addition, still
+     only appears when call_shifted/put_shifted is true (never for a
+     position with no baseline, like trade #3). -->
+<!-- 2026-08-17: short-strike proximity -- ALERT-ONLY, per explicit
+     request ("alert when spot nears a short strike") -- see
+     spx_forward_test.check_strike_proximity()'s module comment. The most
+     directly decision-relevant of the SPX risk signals: the point where
+     spot is close enough to a short strike that gamma risk genuinely
+     starts accelerating for real, worth a manual look. -->
 <div id="spxstrikeproxline" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 8px">
   Distance to short strikes: <span id="spxstrikeproxtext">—</span>
 </div>
@@ -151,21 +275,59 @@
   🧲 <b>Dealer gamma wall shifted since entry</b> -- <span id="spxgexwalldetail"></span>
 </div>
 <span id="spxnoposition" style="display:none"></span>
-<!-- 2026-08-23: standalone SPX Closed table removed -- SPX's real closed
-     trades now appear as MrS-tagged rows in the unified Closed Positions
-     table instead. Mirrors dashboard.html. -->
+<!-- 2026-08-23: standalone SPX Closed Positions table removed per explicit
+     request ("remove the SPX forward trader table and just add the SPX
+     trade to closed trade as done by Mr SPX") -- SPX's real closed trades
+     now appear as MrS-tagged rows in the unified Closed Positions table
+     below instead (bot.py's write_dashboard(), the spx_snapshot['closed']
+     fold-in). Open-position status cards and risk analytics above are
+     untouched -- that's live monitoring, not duplicated anywhere else. -->
 
+<!-- 2026-08-03: Open Positions section was removed entirely per that
+     day's request ("remove the open position.. I only need the closed
+     position"). 2026-08-23: reintroduced unified (MrW/MrS/MrM), then
+     removed again the same day per explicit request ("no point in having
+     open position and risk portfolio.. I would prefer to have risk
+     portfolio instead of open position since it given me better
+     understanding of open position and risk associated") -- Portfolio
+     Risk Profile below already covers open-position visibility with more
+     useful POP/health-check context. -->
 
-<!-- 2026-08-23: Open Positions table removed per explicit request --
-     Portfolio Risk Profile below already covers open-position visibility.
-     Mirrors dashboard.html. -->
+<!-- 2026-09-04: Closed Positions table removed per explicit request ("Remove the closed position table from dashboard") -- was #closedtable, the unified real-money MrW/MrS/MrM closed-trade log fed by d.closed_positions (bot.py write_dashboard()). Realized P&L per position is still visible via the Portfolio Risk Profile / Slack close alerts; this only removed the standalone historical table. -->
 
-<h2>Closed Positions &mdash; Total Closed P&amp;L <span id="closedtotalpnl">—</span></h2>
-<table id="closedtable">
-  <thead><tr><th>Origin</th><th>Position</th><th>Legs</th><th>Opened</th><th>Closed</th><th>Realized P&amp;L</th><th>Max Profit</th><th>% Booked</th></tr></thead>
+<!-- 2026-09-01: iv_edge (deep-ITM call debit vertical, paper-only research
+     track) per-ticker table -- added per explicit request after the
+     MSTR/DELL "why does the dashboard show them closed" investigation
+     surfaced that this strategy's open/closed status wasn't visible
+     anywhere on the dashboard at all, only inside
+     iv_edge_vertical_trades.db. d.iv_edge.trades (see
+     iv_edge_vertical_test.py's dashboard_snapshot()). Still 100% paper --
+     no real capital, shown here purely for visibility. -->
+<h2>iv_edge Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(deep-ITM call debit verticals -- research track, no real capital)</span></h2>
+<table id="ivedgetable">
+  <thead><tr><th>Ticker</th><th>Status</th><th>Entry</th><th>Expiry</th><th>DTE @ Entry</th><th>Exit</th><th>Exit Reason</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
+<!-- 2026-09-04: MrBullish (Ichimoku Cloud + breadth-gated, paper-only
+     research track) per-ticker table -- added per explicit request
+     ("add Mr bullish paper trade also to dashboard"). d.mrbullish.trades
+     (see mrbullish_paper.py's dashboard_snapshot()). Still 100% paper --
+     no real capital, shown here purely for visibility, same convention
+     as the iv_edge table above. -->
+<h2>MrBullish Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(Ichimoku Cloud + market-breadth gated -- research track, no real capital)</span></h2>
+<table id="mrbullishtable">
+  <thead><tr><th>Ticker</th><th>Status</th><th>Entry</th><th>Entry Price</th><th>Exit</th><th>Exit Reason</th><th>Return %</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<!-- 2026-08-04: Portfolio Risk Profile -- per-open-position red/yellow/
+     green health check, per request ("add a portfolio risk profile below
+     closed position.. is it under water, or is there still scope to
+     recover.. POP for each trade"). See bot.py's _compute_risk_profile()
+     for the exact methodology (live Black-Scholes POP + % of max profit
+     captured) and _risk_color() for the thresholds, both explicitly
+     chosen over the alternatives during the design discussion. -->
 <h2>Portfolio Risk Profile <span style="font-weight:400;color:var(--dim);font-size:11px">(every open position -- MrW/MrS/MrM)</span></h2>
 <table id="riskprofiletable">
   <thead><tr><th>Origin</th><th></th><th>Position</th><th>DTE</th><th>Pending P&amp;L</th><th>Max Loss</th><th>Max Profit</th><th>% Captured</th><th>POP</th><th>P(Max Loss)</th><th>Theta/Day</th><th>Gamma Risk</th></tr></thead>
@@ -175,10 +337,11 @@
   Gamma Risk column is alert-only -- informational, does not affect the profit target or pre-earnings close. Blank = not yet computed for this position.
 </div>
 
-</div><!-- #dash-content -->
-
 <script src="dashboard_data.js"></script>
 <script>
+// 2026-08-03: toggles the expand/collapse of a grouped ticker's child
+// spread rows on the Open Positions table -- must live outside the
+// render IIFE below since it's called from inline onclick= HTML.
 window.toggleMwGroup = function(groupKey, headerEl) {
   const rows = document.querySelectorAll('.mw-child-' + CSS.escape(groupKey));
   const showing = rows.length && rows[0].style.display !== 'none';
@@ -189,15 +352,29 @@ window.toggleMwGroup = function(groupKey, headerEl) {
 (function(){
   const d = window.BOT_DATA;
   const $ = id => document.getElementById(id);
-  if (!d) { $('stale').style.display='block'; $('stale').textContent='No data published yet.'; return; }
+  if (!d) { $('stale').style.display='block'; $('stale').textContent='No data yet — start bot.py and this page will populate.'; return; }
   const money = v => (v==null||isNaN(v)) ? '—' : '$' + Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 
   $('mode').textContent = d.mode;
   $('mode').className = 'pill ' + (d.mode==='LIVE' ? 'live' : 'dry');
+  // 2026-08-04: account number removed from the header display per
+  // request ("remove the account number") -- d.account is still written
+  // to dashboard_data.js by bot.py (harmless, unused here) in case it's
+  // ever needed again.
   $('updated').textContent = d.updated || '—';
   $('mkt').textContent = d.market_open ? 'market OPEN' : 'market closed';
+  // 2026-07-24: "Total account value = net deposit" -- this card now
+  // shows net cash funded into the account (deposits - withdrawals,
+  // all-time), NOT net-liq. Net Liq (the actual current worth of the
+  // account) is still its own separate card right below.
   $('acctvalue').textContent = d.net_deposits != null ? money(d.net_deposits) : '—';
   $('netliq').textContent = money(d.net_liq);
+  // 2026-07-27: real, account-wide numbers straight from Tastytrade's
+  // transaction history / positions (bot.py's write_dashboard()) -- NOT
+  // scoped to MrWhales, covers every trade on the account. realized_pnl_
+  // ytd/total_commission_fees_ytd can be null if the transactions() pull
+  // failed that cycle (rate limit, network hiccup) -- shown as '—' rather
+  // than a stale/wrong $0.
   if (d.realized_pnl_ytd != null) {
     const r = Number(d.realized_pnl_ytd);
     $('realizedytd').textContent = (r>=0?'+':'') + money(r).replace('$-','-$');
@@ -205,6 +382,9 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   } else {
     $('realizedytd').textContent = '—';
   }
+  // 2026-08-03: Weekly/Monthly/Quarterly net profit -- same pattern as
+  // Realized P&L YTD above, values already net of commission (see
+  // bot.py's write_dashboard() comment on net-value).
   [['weeklypnl','weekly_pnl'], ['monthlypnl','monthly_pnl']].forEach(([elId, field]) => {
     const el = $(elId);
     if (d[field] != null) {
@@ -222,13 +402,25 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   } else {
     $('unrealizedtotal').textContent = '—';
   }
+  // 2026-08-04: Total Max Loss (Open Positions) -- sum of every open
+  // MrWhales position's max_loss (bot.py's total_max_loss_open).
   $('totalmaxlossopen').textContent = d.total_max_loss_open != null
     ? '-' + money(d.total_max_loss_open).replace('$-','$') : '—';
   $('commfeesytd').textContent = d.total_commission_fees_ytd != null ? money(d.total_commission_fees_ytd) : '—';
   $('settled').textContent = money(d.settled_funds);
+  // 2026-07-25: "Sizing Base" now shows 70% of real net-liquidating value
+  // (bot.py computes d.sizing_base = round(nl*0.70,2)) instead of the
+  // static config.ACCOUNT_SIZE constant, per request "sizing base is to
+  // be 70% of total capital". Falls back to account_size for stale data.
   $('base').textContent = money(d.sizing_base ?? d.account_size);
 
-  // 2026-08-23: mirrors dashboard.html exactly.
+  // 2026-08-14: Trade Activity -- d.trade_activity (bot.py's
+  // write_dashboard(), same source Slack's daily summary now shares).
+  // 2026-08-23: Trades Taken/Open Positions/Closed Positions tiles
+  // removed per explicit request; Win Rate split into three per-origin
+  // tiles (d.trade_activity.win_rate_by_origin) plus the overall Weighted
+  // Win Rate tile, now a real mix of MrW+MrS+MrM (see bot.py's fold-in
+  // comment).
   if (d.trade_activity) {
     const ta = d.trade_activity;
     const wro = ta.win_rate_by_origin || {};
@@ -243,6 +435,8 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         el.className = 'value';
       }
     });
+    // 2026-08-21: Weighted Win Rate -- $-weighted companion to Win Rate
+    // above (see this tile's HTML comment).
     if (ta.weighted_win_rate_pct != null) {
       $('weightedwinrate').textContent = ta.weighted_win_rate_pct.toFixed(1) + '% ('
         + money(ta.gross_win) + ' won / ' + money(ta.gross_loss) + ' lost)';
@@ -252,6 +446,26 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     }
   }
 
+  // 2026-08-21: Drawdown Alert (MrWhales-only) -- d.mrwhales_drawdown (see
+  // this tile's HTML comment). Red + "ALERT" label once it's actually
+  // breached the same threshold the Slack alert uses (never just "red
+  // because negative" -- a small negative day isn't the alert condition).
+  const dd = d.mrwhales_drawdown;
+  if (dd && dd.today_pnl != null) {
+    const v = Number(dd.today_pnl);
+    const pct = dd.pct_of_netliq;
+    const breached = pct != null && dd.threshold_pct != null && (-pct) >= dd.threshold_pct;
+    const pctText = pct != null ? ` (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% of net-liq)` : '';
+    $('drawdownalert').textContent = (breached ? '🔴 ' : '') + (v>=0?'+':'') + money(v).replace('$-','-$') + pctText;
+    $('drawdownalert').className = 'value ' + (breached ? 'red' : (v>0?'green':v<0?'amber':''));
+  } else {
+    $('drawdownalert').textContent = '—';
+  }
+
+  // 2026-08-17: month-end projection -- d.month_end_projection (see
+  // bot.py's write_dashboard()). null/hidden entirely if the computation
+  // failed that cycle (e.g. transactions() pull hiccup) rather than
+  // showing a fabricated number.
   const mep = d.month_end_projection;
   if (mep && mep.expected != null && mep.best_case != null && mep.worst_case != null) {
     $('monthprojworst').textContent = money(mep.worst_case);
@@ -270,96 +484,131 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     $('monthprojcaveat').style.display = 'none';
   }
 
+  // staleness: updated string is ET; warn if older than 15 min
   try {
     const ts = new Date(d.updated.replace(' ET','').replace(' ','T') + '-04:00');
     if (Date.now() - ts.getTime() > 15*60*1000) $('stale').style.display='block';
   } catch(e){}
 
+
   // 2026-08-23: Open Positions table removed per explicit request --
   // `badge` is still needed below for the Closed Positions Origin column.
   const badge = o => `<span class="origin-badge origin-${o||'MrM'}">${o||'MrM'}</span>`;
 
-  const ctb = $('closedtable').querySelector('tbody');
-  if (!d.closed_positions || !d.closed_positions.length) {
-    ctb.innerHTML = '<tr><td colspan="8" class="empty">No closed positions this year</td></tr>';
-    $('closedtotalpnl').textContent = money(0);
-  } else {
-    let closedTotal = 0;
-    const byTicker = new Map();
-    d.closed_positions.forEach(c => {
-      closedTotal += Number(c.pnl||0);
-      if (!byTicker.has(c.underlying)) byTicker.set(c.underlying, []);
-      byTicker.get(c.underlying).push(c);
-    });
+  // 2026-09-01: iv_edge per-ticker table -- d.iv_edge.trades (see
+  // iv_edge_vertical_test.py's dashboard_snapshot()). Falls back to the
+  // empty-state row if the field is missing (older dashboard_data.js
+  // written before this table existed) rather than throwing.
+  (function(){
+    const tb = $('ivedgetable').querySelector('tbody');
+    const trades = (d.iv_edge && d.iv_edge.trades) || [];
+    if (!trades.length) {
+      tb.innerHTML = '<tr><td colspan="9" class="empty">No iv_edge trades yet</td></tr>';
+      return;
+    }
+    tb.innerHTML = trades.map(t => {
+      const pnl = t.realized_pnl;
+      const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
+      const pnlTxt = pnl == null ? '\u2014' : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$');
+      // 2026-09-04: PRIMARY figure switched to the MID-price mark
+      // (unrealized_pnl_mid), not the old worst-case mark -- a live post-
+      // mortem found worst-case (sell long at bid, buy back short at ask)
+      // was showing large fake "losses" on deep-ITM verticals whose
+      // underlying had actually rallied in the trade's favor, purely
+      // because these legs carry wide absolute dollar bid-ask spreads.
+      // Falls back to the old worst-case field only if a mid mark isn't
+      // available yet (e.g. right after this rolled out, before the next
+      // monitor cycle re-marks each open position). Worst-case is still
+      // shown alongside, smaller, as the conservative "what you'd
+      // actually get if you closed this second" reference number.
+      const upnlMid = t.unrealized_pnl_mid;
+      const upnlWorst = t.unrealized_pnl;
+      const upnl = upnlMid != null ? upnlMid : upnlWorst;
+      const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
+      const capturePct = upnlMid != null ? t.capture_pct_mid : t.capture_pct;
+      // 2026-09-02: unrealized P&L only means anything while the trade is
+      // still open -- once closed, realized_pnl is the real number and
+      // unrealized (a stale last-marked value from before it closed)
+      // would be misleading shown alongside it, so blank it out.
+      const upnlTxt = (t.status !== 'open' || upnl == null) ? '\u2014'
+        : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$')
+          + (capturePct != null ? ` (${capturePct}%)` : '')
+          + (t.status === 'open' && upnlWorst != null && upnlMid != null
+             ? ` <span style="opacity:.6;font-size:.85em">[worst-case ${upnlWorst >= 0 ? '+' : ''}${money(upnlWorst).replace('$-', '-$')}]</span>`
+             : '');
+      const statusTxt = t.status === 'open' ? 'open' : 'closed';
+      const statusCls = t.status === 'open' ? 'amber' : '';
+      return `<tr>
+        <td>${t.ticker}</td>
+        <td class="${statusCls}">${statusTxt}</td>
+        <td>${t.entry_date || '\u2014'}</td>
+        <td>${t.expiry || '\u2014'}</td>
+        <td>${t.dte_at_entry ?? '\u2014'}</td>
+        <td>${t.exit_date || '\u2014'}</td>
+        <td>${t.exit_reason || '\u2014'}</td>
+        <td class="${upnlCls}">${upnlTxt}</td>
+        <td class="${pnlCls}">${pnlTxt}</td>
+      </tr>`;
+    }).join('');
+  })();
 
-    const mpCell = c => c.max_profit==null
-      ? `<span title="${(c.skip_reason||'unknown').replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dotted var(--dim)">—</span>`
-      : money(c.max_profit);
-    const pbCell = c => c.pct_booked==null ? '—' : c.pct_booked + '%';
+  // 2026-09-04: MrBullish per-ticker table -- d.mrbullish.trades (see
+  // mrbullish_paper.py's dashboard_snapshot()). Same fail-open convention
+  // as the iv_edge table above -- falls back to an empty-state row if the
+  // field is missing rather than throwing.
+  (function(){
+    const tb = $('mrbullishtable').querySelector('tbody');
+    const trades = (d.mrbullish && d.mrbullish.trades) || [];
+    if (!trades.length) {
+      tb.innerHTML = '<tr><td colspan="7" class="empty">No MrBullish trades yet</td></tr>';
+      return;
+    }
+    tb.innerHTML = trades.map(t => {
+      const ret = t.return_pct;
+      const retCls = ret == null ? '' : (ret > 0 ? 'green' : ret < 0 ? 'red' : '');
+      const retTxt = ret == null ? '\u2014' : (ret >= 0 ? '+' : '') + ret + '%';
+      const statusTxt = t.status === 'open' ? 'open' : 'closed';
+      const statusCls = t.status === 'open' ? 'amber' : '';
+      return `<tr>
+        <td>${t.ticker}</td>
+        <td class="${statusCls}">${statusTxt}</td>
+        <td>${t.entry_date || '\u2014'}</td>
+        <td>${t.entry_price != null ? money(t.entry_price) : '\u2014'}</td>
+        <td>${t.exit_date || '\u2014'}</td>
+        <td>${t.exit_reason || '\u2014'}</td>
+        <td class="${retCls}">${retTxt}</td>
+      </tr>`;
+    }).join('');
+  })();
 
-    const childRow = c => {
-      const pnl = Number(c.pnl||0);
-      const cls = pnl>0?'green':pnl<0?'red':'';
-      const expiryFmt = c.expiry ? `20${c.expiry.slice(0,2)}-${c.expiry.slice(2,4)}-${c.expiry.slice(4,6)}` : '—';
-      return `<tr class="mw-child mw-child-closed-${c.underlying}" style="display:none">
-         <td></td>
-         <td style="padding-left:28px;color:var(--dim)">exp ${expiryFmt}</td><td>${c.leg_count}</td>
-         <td>${c.opened||'—'}</td><td>${c.closed||'—'}</td>
-         <td class="${cls}">${(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td>
-         <td>${mpCell(c)}</td><td>${pbCell(c)}</td></tr>`;
-    };
+  // 2026-09-04: Closed Positions block removed per explicit request --
+  // was the #closedtable render (real MrW/MrS/MrM closed-trade log).
 
-    byTicker.forEach((clist, ticker) => {
-      if (clist.length === 1) {
-        const c = clist[0];
-        const pnl = Number(c.pnl||0);
-        const cls = pnl>0?'green':pnl<0?'red':'';
-        const expiryFmt = c.expiry ? `20${c.expiry.slice(0,2)}-${c.expiry.slice(2,4)}-${c.expiry.slice(4,6)}` : '—';
-        ctb.insertAdjacentHTML('beforeend',
-          `<tr><td>${badge(c.origin)}</td><td>${c.underlying} (exp ${expiryFmt})</td><td>${c.leg_count}</td>
-           <td>${c.opened||'—'}</td><td>${c.closed||'—'}</td>
-           <td class="${cls}">${(pnl>=0?'+':'')+money(pnl).replace('$-','-$')}</td>
-           <td>${mpCell(c)}</td><td>${pbCell(c)}</td></tr>`);
-        return;
-      }
-      const totalLegs = clist.reduce((s,c)=>s+Number(c.leg_count||0),0);
-      const totalPnl = clist.reduce((s,c)=>s+Number(c.pnl||0),0);
-      const known = clist.filter(c => c.max_profit != null);
-      const totalMaxProfit = known.length ? known.reduce((s,c)=>s+Number(c.max_profit||0),0) : null;
-      const pctBooked = (totalMaxProfit && totalMaxProfit > 0) ? Math.round(totalPnl/totalMaxProfit*1000)/10 : null;
-      const cls = totalPnl>0?'green':totalPnl<0?'red':'';
-      const isPartial = totalMaxProfit != null && known.length < clist.length;
-      const mpGroupCell = totalMaxProfit != null
-        ? money(totalMaxProfit) + (isPartial ? '*' : '')
-        : (() => {
-            const reasons = [...new Set(clist.map(c => c.skip_reason).filter(Boolean))].join(' | ');
-            return `<span title="${reasons.replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dotted var(--dim)">—</span>`;
-          })();
-      const groupOrigins = [...new Set(clist.map(c => c.origin || 'MrM'))];
-      ctb.insertAdjacentHTML('beforeend',
-        `<tr class="mw-group-header" onclick="toggleMwGroup('closed-${ticker}', this)" style="cursor:pointer">
-         <td>${groupOrigins.map(badge).join(' ')}</td>
-         <td><span class="mw-toggle">▶</span> ${ticker} (${clist.length} trades)</td><td>${totalLegs}</td>
-         <td>—</td><td>—</td>
-         <td class="${cls}">${(totalPnl>=0?'+':'')+money(totalPnl).replace('$-','-$')}</td>
-         <td>${mpGroupCell}</td>
-         <td>${pctBooked==null?'—':pctBooked+'%'}</td></tr>`);
-      clist.forEach(c => ctb.insertAdjacentHTML('beforeend', childRow(c)));
-    });
-
-    closedTotal = Math.round(closedTotal * 100) / 100;
-    const totalEl = $('closedtotalpnl');
-    totalEl.textContent = (closedTotal>=0?'+':'') + money(closedTotal).replace('$-','-$');
-    totalEl.className = closedTotal>0?'green':closedTotal<0?'red':'';
-  }
-
+  // 2026-08-04: Portfolio Risk Profile -- one row per currently-open
+  // MrWhales position, red/yellow/green per bot.py's _risk_color(). Every
+  // numeric field can be null (a quote-fetch hiccup, or IV/spot missing
+  // from the quote that cycle) -- shown as '—' rather than a fabricated
+  // number, with the row's `note` surfaced as a hover tooltip so a
+  // degraded row is never silently indistinguishable from a healthy one.
   const rpb = $('riskprofiletable').querySelector('tbody');
   if (!d.risk_profile || !d.risk_profile.length) {
     rpb.innerHTML = '<tr><td colspan="12" class="empty">No open positions</td></tr>';
   } else {
+    // 2026-08-17: gamma/IV-rank risk model, ALERT-ONLY (per-position "risk"
+    // field on d.mrwhales_positions, see mrwhales_trader.positions_for_
+    // dashboard()). Joined here by ticker since risk_profile rows and
+    // mrwhales_positions rows both come from the same open-position set --
+    // does not affect any other column, purely an added display.
     const mwByTicker = {};
     (d.mrwhales_positions || []).forEach(mp => { mwByTicker[mp.ticker] = mp; });
     d.risk_profile.forEach(r => {
+      // 2026-08-04: Pending P&L (current unrealized gain/loss) restored
+      // alongside Max Loss (the full premium paid -- worst case if the
+      // spread expires worthless), per request ("bring that Pending P&L
+      // back"). Max Loss is always populated (pure position data, no live
+      // quote needed); Pending P&L needs a live quote, so it can be '—'
+      // on a cycle where that quote wasn't available even when Max Loss
+      // still shows.
       const pnl = r.pnl;
       const pnlCls = pnl==null ? '' : (pnl>0?'green':pnl<0?'red':'');
       const pnlTxt = pnl==null ? '—' : (pnl>=0?'+':'') + money(pnl).replace('$-','-$');
@@ -392,6 +641,15 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     });
   }
 
+  // 2026-07-25: "Recent Bot Activity (journal)" table removed from the
+  // dashboard per request -- raw journal entries are still captured in
+  // journal.jsonl / trade_log.csv / history.db for later analysis, this
+  // just stops rendering them here.
+
+  // 2026-08-17: SPX Forward Trader section -- d.spx (bot.py's
+  // write_dashboard() -> spx_forward_test.dashboard_snapshot()). Same
+  // fail-open convention as the rest of this page: a missing/partial d.spx
+  // renders as "no data yet" rather than throwing.
   const spx = d.spx || {open: null, closed: [], track_record: {}};
   const tr = spx.track_record || {};
   $('spxtrackrecord').textContent = tr.closed_count
@@ -421,6 +679,10 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     $('spxtarget').textContent = p.profit_target_debit != null
       ? '≤ ' + money(p.profit_target_debit * 100 * qty) : '—';
 
+    // 2026-08-17: gamma/VIX risk model -- ALERT-ONLY (p.risk, see
+    // spx_forward_test.spx_risk_snapshot()). tier can be null (quote/IV
+    // fetch hiccup that cycle) -- cards stay hidden rather than showing
+    // fabricated dashes for every field.
     const risk = p.risk;
     if (risk && risk.tier) {
       $('spxriskcards').style.display = '';
@@ -440,6 +702,9 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       $('spxriskcaveat').style.display = 'none';
     }
 
+    // 2026-08-17: rough unrealized P&L attribution (p.pnl_attribution, see
+    // spx_forward_test.dashboard_snapshot()). null when any input greek/
+    // VIX read was missing that cycle -- hidden rather than shown wrong.
     const attr = p.pnl_attribution;
     if (attr) {
       const fmt = v => (v>=0?'+':'-') + '$' + Math.abs(Math.round(v)).toLocaleString();
@@ -452,6 +717,10 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       $('spxpnlattr').style.display = 'none';
     }
 
+    // 2026-08-17: short-strike proximity (p.strike_proximity, see
+    // spx_forward_test.check_strike_proximity()). Always-visible distance
+    // line, plus a highlighted banner when within
+    // config.SPX_STRIKE_PROXIMITY_PCT of either short strike.
     const sp = p.strike_proximity;
     if (sp && sp.spot != null) {
       $('spxstrikeproxtext').textContent =
@@ -471,6 +740,12 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       $('spxstrikeproxalert').style.display = 'none';
     }
 
+    // 2026-08-17: dealer gamma / GEX wall (p.gex_wall, see spx_forward_
+    // test.check_gex_wall_shift()/gex_wall_snapshot()).
+    // spxgexwallline: ALWAYS shown when call_wall/put_wall are known,
+    // regardless of shift status -- gives visibility on a position (like
+    // trade #3) that has no entry baseline to compare against, so the
+    // shift banner below can never fire for it.
     const gw = p.gex_wall;
     if (gw && (gw.call_wall != null || gw.put_wall != null)) {
       const hasBaseline = gw.entry_call_wall != null || gw.entry_put_wall != null;
@@ -483,6 +758,9 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       $('spxgexwallline').style.display = 'none';
     }
 
+    // spxgexwallalert: only shown when a shift has actually been DETECTED
+    // (requires an entry baseline -- structurally impossible without one,
+    // e.g. trade #3). Not noise-shown every cycle otherwise.
     if (gw && (gw.call_shifted || gw.put_shifted)) {
       const parts = [];
       if (gw.call_shifted) parts.push(`call wall ${gw.entry_call_wall} → ${gw.call_wall}`);
@@ -505,10 +783,13 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     $('spxnoposition').style.display = '';
   }
 
-  // 2026-08-23: standalone SPX Closed table removed -- mirrors
-  // dashboard.html, see that file's comment.
+  // 2026-08-23: standalone SPX Closed table (#spxclosedtable) removed --
+  // SPX's real closed trades now render as MrS-tagged rows in the
+  // unified Closed Positions table above instead. See this file's HTML
+  // comment near where that table used to sit.
 })();
 </script>
+</div><!-- #dash-content -->
 
 <script>
 // --- password gate logic ---
@@ -541,4 +822,5 @@ if (sessionStorage.getItem('tapn_gate_ok') === '1') revealDashboard();
 </script>
 
 </body>
+
 </html>

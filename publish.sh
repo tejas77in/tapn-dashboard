@@ -1,10 +1,12 @@
 #!/bin/bash
-# Manual refresh: copies the latest dashboard_data.js from the live TAPN
-# bot folder into this repo and pushes to GitHub, which triggers a Vercel
-# redeploy automatically. Run this any time you want the published
-# dashboard to reflect current data. index.html is NOT overwritten by
-# this script (it only changes when you edit the dashboard layout
-# yourself), so your GATE_HASH edit is safe to keep across runs.
+# Runs on launchd's 15-min schedule (com.tejas.tapn-dashboard-publish.plist)
+# and copies the latest dashboard_data.js AND rebuilds index.html from the
+# live TAPN bot folder's dashboard.html, then pushes both to GitHub, which
+# triggers a Vercel redeploy automatically. 2026-09-04: index.html IS now
+# rebuilt every run (via build_index.py) so a layout edit to dashboard.html
+# reaches the published site automatically -- GATE_HASH is preserved
+# across rebuilds (read back from the existing index.html each time), so
+# it's still safe; only set_password.sh changes it.
 set -e
 cd "$(dirname "$0")"
 
@@ -26,12 +28,24 @@ echo "=== $(date '+%Y-%m-%d %H:%M:%S %Z') (PATH=$PATH) ==="
 TAPN_DIR="/Volumes/WD_Extention/TAPN"
 cp "$TAPN_DIR/dashboard_data.js" ./dashboard_data.js
 
-git add dashboard_data.js
+# 2026-09-04 (per explicit request, "make sure when we change dashboard.html
+# it automatically updates the github repo and vercel website"): rebuild
+# index.html from the current dashboard.html on every cycle before
+# deciding what to commit. build_index.py re-applies the Vercel-only
+# additions (noindex meta, password gate) on top of whatever dashboard.html
+# currently says, preserving the existing GATE_HASH -- so a layout edit
+# made directly to dashboard.html now reaches the published site within
+# one 15-min publish cycle with no manual copy/merge step, same as
+# dashboard_data.js already did. Idempotent: no diff if dashboard.html
+# hasn't changed since the last run.
+python3 build_index.py
+
+git add dashboard_data.js index.html
 if git diff --cached --quiet; then
   echo "No changes since last publish -- nothing to push."
   exit 0
 fi
-git commit -m "Update dashboard data $(date '+%Y-%m-%d %H:%M %Z')"
+git commit -m "Update dashboard $(date '+%Y-%m-%d %H:%M %Z')"
 
 # 2026-08-19: sync with the remote before pushing -- every push was being
 # rejected as non-fast-forward (remote had commits this local clone never
