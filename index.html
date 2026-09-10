@@ -352,7 +352,7 @@
      (see spx_multistrat_paper.py's dashboard_snapshot()). 100% paper -- no real capital. -->
 <h2>SPX Multi-Structure Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(short straddle/strangle, butterfly, broken-wing butterfly, calendar -- research track, no real capital)</span></h2>
 <table id="spxmultitable">
-  <thead><tr><th>Structure</th><th>Status</th><th>Expiry</th><th>Far Expiry</th><th>DTE</th><th>Entry Credit/Debit</th><th>POP</th><th>Settle Spot</th><th>Realized P&amp;L</th></tr></thead>
+  <thead><tr><th>Structure</th><th>Legs</th><th>Status</th><th>Expiry</th><th>Far Expiry</th><th>DTE</th><th>Entry Credit/Debit</th><th>Max Risk</th><th>Max Profit</th><th>POP</th><th>Settle Spot</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -693,7 +693,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     const tb = el.querySelector('tbody');
     const trades = (d.spxmulti && d.spxmulti.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="9" class="empty">No SPX multi-structure trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="12" class="empty">No SPX multi-structure trades yet</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
@@ -713,13 +713,24 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       // trade Slack correctly reported as "credit $2,960".
       const cd = t.entry_credit_debit;
       const cdTxt = cd == null ? '—' : (cd >= 0 ? 'credit ' : 'debit ') + money(Math.abs(cd) * 100);
+      // 2026-09-10 (per explicit request, "details of the legs/wings are
+      // not shown... difficult to understand"): legs_summary is a
+      // human-readable strikes/wings string built server-side by
+      // spx_multistrat_paper.py's _legs_summary(); max_risk is also raw
+      // per-contract (like entry_credit_debit above), so x100 here too --
+      // null for short_straddle/short_strangle (undefined risk, not faked).
+      const maxRiskTxt = t.max_risk == null ? '—' : money(Math.abs(t.max_risk) * 100);
+      const maxProfitTxt = t.max_profit == null ? '—' : money(Math.abs(t.max_profit) * 100);
       return `<tr>
         <td>${t.structure}</td>
+        <td style="font-size:11px">${t.legs_summary || '—'}</td>
         <td class="${statusCls}">${statusTxt}</td>
         <td>${t.expiry || '—'}</td>
         <td>${t.far_expiry || '—'}</td>
         <td>${t.dte ?? '—'}</td>
         <td>${cdTxt}</td>
+        <td>${maxRiskTxt}</td>
+        <td>${maxProfitTxt}</td>
         <td>${t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—'}</td>
         <td>${t.settle_spot != null ? t.settle_spot.toFixed(1) : '—'}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
