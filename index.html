@@ -704,8 +704,15 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$') + (pnlPct != null ? ` (${pnlPct.toFixed ? pnlPct.toFixed(1) : pnlPct}%)` : '');
       const statusTxt = t.status === 'open' ? 'open' : 'closed';
       const statusCls = t.status === 'open' ? 'amber' : '';
+      // entry_credit_debit is stored as raw per-contract premium (e.g.
+      // 32.5), not multiplied by the $100 contract multiplier -- realized_pnl
+      // (below) IS already stored in real dollars (settle_matured_trades()
+      // multiplies it), so this needed its own x100 to show the real dollar
+      // credit/debit, matching what format_scan_slack() already shows in
+      // Slack -- fixed 2026-09-10 after "credit $29.60" on dashboard for a
+      // trade Slack correctly reported as "credit $2,960".
       const cd = t.entry_credit_debit;
-      const cdTxt = cd == null ? '—' : (cd >= 0 ? 'credit ' : 'debit ') + money(Math.abs(cd));
+      const cdTxt = cd == null ? '—' : (cd >= 0 ? 'credit ' : 'debit ') + money(Math.abs(cd) * 100);
       return `<tr>
         <td>${t.structure}</td>
         <td class="${statusCls}">${statusTxt}</td>
