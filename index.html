@@ -321,6 +321,31 @@
   <tbody></tbody>
 </table>
 
+<!-- 2026-09-10: Moonshot (far-OTM low-IV vertical, 90-365 DTE, paper-only
+     research track) per-ticker table -- added per "I dont see the trades
+     on dashboard": this strategy's paper trades were logging fine to
+     moonshot_trades.db the whole time, write_dashboard() just never
+     carried them into dashboard_data.js until now. d.moonshot.trades
+     (see vertical_moonshot_scanner.py's dashboard_snapshot()). Still
+     100% paper -- no real capital, shown here purely for visibility,
+     same convention as iv_edge/MrBullish above. -->
+<h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital)</span></h2>
+<table id="moonshottable">
+  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Payout</th><th>Realized P&amp;L</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<!-- 2026-09-10: IV Crush (earnings calendar spread, paper-only research
+     track) per-ticker table -- new strategy, added to the dashboard from
+     day one (unlike Moonshot above, which was retrofitted after the gap
+     was found). d.ivcrush.trades (see ivcrush_paper.py's
+     dashboard_snapshot()). 100% paper -- no real capital. -->
+<h2>IV Crush Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(earnings calendar spread, slope/volume/IV-RV gated -- research track, no real capital)</span></h2>
+<table id="ivcrushtable">
+  <thead><tr><th>Ticker</th><th>Status</th><th>Verdict</th><th>Structure</th><th>Reports</th><th>Entry</th><th>Debit</th><th>Realized P&amp;L</th></tr></thead>
+  <tbody></tbody>
+</table>
+
 <!-- 2026-08-04: Portfolio Risk Profile -- per-open-position red/yellow/
      green health check, per request ("add a portfolio risk profile below
      closed position.. is it under water, or is there still scope to
@@ -577,6 +602,74 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         <td>${t.exit_date || '\u2014'}</td>
         <td>${t.exit_reason || '\u2014'}</td>
         <td class="${retCls}">${retTxt}</td>
+      </tr>`;
+    }).join('');
+  })();
+
+  // 2026-09-10: Moonshot per-ticker table -- d.moonshot.trades (see
+  // vertical_moonshot_scanner.py's dashboard_snapshot()). Same fail-open
+  // convention as iv_edge/MrBullish above.
+  (function(){
+    const el = $('moonshottable');
+    if (!el) return;
+    const tb = el.querySelector('tbody');
+    const trades = (d.moonshot && d.moonshot.trades) || [];
+    if (!trades.length) {
+      tb.innerHTML = '<tr><td colspan="9" class="empty">No Moonshot trades yet</td></tr>';
+      return;
+    }
+    tb.innerHTML = trades.map(t => {
+      const pnl = t.realized_pnl;
+      const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
+      const pnlTxt = pnl == null ? '—' : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$');
+      const statusTxt = t.status === 'open' ? 'open' : 'closed';
+      const statusCls = t.status === 'open' ? 'amber' : '';
+      const structure = `${t.long_strike}/${t.short_strike}${t.direction === 'call' ? 'C' : 'P'}`;
+      return `<tr>
+        <td>${t.ticker}</td>
+        <td class="${statusCls}">${statusTxt}</td>
+        <td>${structure}</td>
+        <td>${t.entry_date || '—'}</td>
+        <td>${t.expiry || '—'}</td>
+        <td>${t.dte_at_entry ?? '—'}</td>
+        <td>${t.entry_debit != null ? money(t.entry_debit) : '—'}</td>
+        <td>${t.payout_multiple != null ? t.payout_multiple + 'x' : '—'}</td>
+        <td class="${pnlCls}">${pnlTxt}</td>
+      </tr>`;
+    }).join('');
+  })();
+
+  // 2026-09-10: IV Crush per-ticker table -- d.ivcrush.trades (see
+  // ivcrush_paper.py's dashboard_snapshot()). Same fail-open convention
+  // as every other strategy table above.
+  (function(){
+    const el = $('ivcrushtable');
+    if (!el) return;
+    const tb = el.querySelector('tbody');
+    const trades = (d.ivcrush && d.ivcrush.trades) || [];
+    if (!trades.length) {
+      tb.innerHTML = '<tr><td colspan="8" class="empty">No IV Crush trades yet</td></tr>';
+      return;
+    }
+    tb.innerHTML = trades.map(t => {
+      const pnl = t.realized_pnl;
+      const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
+      const pnlPct = t.realized_pnl_pct_of_debit;
+      const pnlTxt = pnl == null ? '—'
+        : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$') + (pnlPct != null ? ` (${pnlPct}%)` : '');
+      const statusTxt = t.status === 'open' ? 'open' : 'closed';
+      const statusCls = t.status === 'open' ? 'amber' : '';
+      const verdictCls = t.verdict === 'Recommended' ? 'green' : t.verdict === 'Consider' ? 'amber' : '';
+      const structure = `${t.strike}C sell ${t.short_expiry}/buy ${t.long_expiry}`;
+      return `<tr>
+        <td>${t.ticker}</td>
+        <td class="${statusCls}">${statusTxt}</td>
+        <td class="${verdictCls}">${t.verdict || '—'}</td>
+        <td>${structure}</td>
+        <td>${t.report_date || '—'} (${t.session || '—'})</td>
+        <td>${t.entry_date || '—'}</td>
+        <td>${t.entry_debit != null ? money(t.entry_debit) : '—'}</td>
+        <td class="${pnlCls}">${pnlTxt}</td>
       </tr>`;
     }).join('');
   })();
