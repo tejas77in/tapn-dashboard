@@ -331,7 +331,7 @@
      same convention as iv_edge/MrBullish above. -->
 <h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital)</span></h2>
 <table id="moonshottable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Payout</th><th>Realized P&amp;L</th></tr></thead>
+  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Payout</th><th>Tape at Entry</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -625,7 +625,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     const tb = el.querySelector('tbody');
     const trades = (d.moonshot && d.moonshot.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="9" class="empty">No Moonshot trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="10" class="empty">No Moonshot trades yet</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
@@ -635,6 +635,17 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       const statusTxt = t.status === 'open' ? 'open' : 'closed';
       const statusCls = t.status === 'open' ? 'amber' : '';
       const structure = `${t.long_strike}/${t.short_strike}${t.direction === 'call' ? 'C' : 'P'}`;
+      // 2026-09-10 (per explicit request, "wiring it might really be the
+      // edge"): real options-tape snapshot captured AT ENTRY (see
+      // vertical_moonshot_scanner.py's log_paper_entries()). Still just a
+      // real premium/tag proxy -- cannot say hedge vs. wall vs. a
+      // pre-planned squeeze, shown as a tooltip caveat rather than repeated
+      // in every cell.
+      const smLeanCls = t.sm_lean === 'bullish' ? 'green' : t.sm_lean === 'bearish' ? 'red' : '';
+      const smTxt = t.sm_trade_count ? `<span class="${smLeanCls}">${t.sm_lean || 'mixed'}</span>` +
+        ` (${t.sm_trade_count} trades, $${(t.sm_total_premium || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} prem` +
+        (t.sm_sweep_count ? `, ${t.sm_sweep_count} sweep` : '') +
+        (t.sm_block_count ? `, ${t.sm_block_count} block` : '') + ')' : '—';
       return `<tr>
         <td>${t.ticker}</td>
         <td class="${statusCls}">${statusTxt}</td>
@@ -644,6 +655,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         <td>${t.dte_at_entry ?? '—'}</td>
         <td>${t.entry_debit != null ? money(t.entry_debit) : '—'}</td>
         <td>${t.payout_multiple != null ? t.payout_multiple + 'x' : '—'}</td>
+        <td style="font-size:11px" title="Real premium/tag proxy -- cannot distinguish a hedge, a market-maker wall, or a pre-planned squeeze setup">${smTxt}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
       </tr>`;
     }).join('');
