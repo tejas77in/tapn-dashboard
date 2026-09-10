@@ -346,6 +346,16 @@
   <tbody></tbody>
 </table>
 
+<!-- 2026-09-10: SPX multi-structure (short straddle/strangle, butterfly,
+     broken-wing butterfly, calendar) paper-only research track table --
+     built while MrSPX's own live Iron Condor is paused (STOPSPX). d.spxmulti.trades
+     (see spx_multistrat_paper.py's dashboard_snapshot()). 100% paper -- no real capital. -->
+<h2>SPX Multi-Structure Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(short straddle/strangle, butterfly, broken-wing butterfly, calendar -- research track, no real capital)</span></h2>
+<table id="spxmultitable">
+  <thead><tr><th>Structure</th><th>Status</th><th>Expiry</th><th>Far Expiry</th><th>DTE</th><th>Entry Credit/Debit</th><th>POP</th><th>Settle Spot</th><th>Realized P&amp;L</th></tr></thead>
+  <tbody></tbody>
+</table>
+
 <!-- 2026-08-04: Portfolio Risk Profile -- per-open-position red/yellow/
      green health check, per request ("add a portfolio risk profile below
      closed position.. is it under water, or is there still scope to
@@ -669,6 +679,42 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         <td>${t.report_date || '—'} (${t.session || '—'})</td>
         <td>${t.entry_date || '—'}</td>
         <td>${t.entry_debit != null ? money(t.entry_debit) : '—'}</td>
+        <td class="${pnlCls}">${pnlTxt}</td>
+      </tr>`;
+    }).join('');
+  })();
+
+  // 2026-09-10: SPX multi-structure per-trade table -- d.spxmulti.trades
+  // (see spx_multistrat_paper.py's dashboard_snapshot()). Same fail-open
+  // convention as every other strategy table above.
+  (function(){
+    const el = $('spxmultitable');
+    if (!el) return;
+    const tb = el.querySelector('tbody');
+    const trades = (d.spxmulti && d.spxmulti.trades) || [];
+    if (!trades.length) {
+      tb.innerHTML = '<tr><td colspan="9" class="empty">No SPX multi-structure trades yet</td></tr>';
+      return;
+    }
+    tb.innerHTML = trades.map(t => {
+      const pnl = t.realized_pnl;
+      const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
+      const pnlPct = t.realized_pnl_pct;
+      const pnlTxt = pnl == null ? '—'
+        : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$') + (pnlPct != null ? ` (${pnlPct.toFixed ? pnlPct.toFixed(1) : pnlPct}%)` : '');
+      const statusTxt = t.status === 'open' ? 'open' : 'closed';
+      const statusCls = t.status === 'open' ? 'amber' : '';
+      const cd = t.entry_credit_debit;
+      const cdTxt = cd == null ? '—' : (cd >= 0 ? 'credit ' : 'debit ') + money(Math.abs(cd));
+      return `<tr>
+        <td>${t.structure}</td>
+        <td class="${statusCls}">${statusTxt}</td>
+        <td>${t.expiry || '—'}</td>
+        <td>${t.far_expiry || '—'}</td>
+        <td>${t.dte ?? '—'}</td>
+        <td>${cdTxt}</td>
+        <td>${t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—'}</td>
+        <td>${t.settle_spot != null ? t.settle_spot.toFixed(1) : '—'}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
       </tr>`;
     }).join('');
