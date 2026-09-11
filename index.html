@@ -342,7 +342,7 @@
      dashboard_snapshot()). 100% paper -- no real capital. -->
 <h2>IV Crush Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(earnings calendar spread, slope/volume/IV-RV gated -- research track, no real capital)</span></h2>
 <table id="ivcrushtable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Verdict</th><th>Structure</th><th>Reports</th><th>Entry</th><th>Debit</th><th>Entry POP</th><th>Current POP</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
+  <thead><tr><th>Ticker</th><th>Variant</th><th>Status</th><th>Verdict</th><th>Structure</th><th>Reports</th><th>Entry</th><th>Debit/Credit</th><th>Entry POP</th><th>Current POP</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -682,7 +682,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     const tb = el.querySelector('tbody');
     const trades = (d.ivcrush && d.ivcrush.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="11" class="empty">No IV Crush trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="12" class="empty">No IV Crush trades yet</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
@@ -694,12 +694,25 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       const statusTxt = t.status === 'open' ? 'open' : 'closed';
       const statusCls = t.status === 'open' ? 'amber' : '';
       const verdictCls = t.verdict === 'Recommended' ? 'green' : t.verdict === 'Consider' ? 'amber' : '';
-      const structure = `${t.strike}C sell ${t.short_expiry}/buy ${t.long_expiry}`;
+      // 2026-09-11 (per explicit request, "check the reverse trade .. just
+      // record and see"): variant distinguishes the original long calendar
+      // (sell near/buy far) from its mirror-image reverse (buy near/sell
+      // far) -- same real candidate, genuinely separate paper position.
+      const isReverse = t.variant === 'reverse';
+      const structure = isReverse
+        ? `${t.strike}C buy ${t.short_expiry}/sell ${t.long_expiry}`
+        : `${t.strike}C sell ${t.short_expiry}/buy ${t.long_expiry}`;
+      const variantCls = isReverse ? 'amber' : '';
       // 2026-09-11: entry_debit is stored as raw per-contract premium (like
       // spx_multistrat_paper.py's entry_credit_debit was), not the real
       // $100-multiplied dollar amount realized_pnl already uses -- x100
       // here too, same fix as the SPX multi-structure table got 2026-09-10.
-      const debitTxt = t.entry_debit != null ? money(t.entry_debit * 100) : '—';
+      // Reverse rows can be negative (a net credit received to open) --
+      // label credit/debit explicitly rather than just showing a bare
+      // negative dollar figure.
+      const rawDebit = t.entry_debit;
+      const debitTxt = rawDebit == null ? '—'
+        : (rawDebit >= 0 ? 'debit ' : 'credit ') + money(Math.abs(rawDebit) * 100);
       // 2026-09-11 (per explicit request, "add ... POP and Unrealized
       // P&L"): entry_pop is a real Black-Scholes probability computed at
       // entry (permanent snapshot, never touched again -- same no-backfill
@@ -718,6 +731,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
       return `<tr>
         <td>${t.ticker}</td>
+        <td class="${variantCls}">${isReverse ? 'reverse' : 'calendar'}</td>
         <td class="${statusCls}">${statusTxt}</td>
         <td class="${verdictCls}">${t.verdict || '—'}</td>
         <td>${structure}</td>
