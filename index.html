@@ -197,6 +197,27 @@
   recalculates automatically as positions close and new ones open. <span id="monthprojnote"></span>
 </div>
 
+<!-- 2026-09-19: single-coherent-market-scenario stress test, per explicit
+     request ("What must happen to market to achieve the best case" ->
+     "How would professional do it ?" -> "ok what you feel is right
+     explain and then do it"). Different from the ranges above: those let
+     every position hit its own best/worst independently (not one real
+     market move); this reprices EVERY open MrWhales vertical + the SPX
+     condor at the SAME real SPX move, using each ticker's real beta and
+     a real BSM reprice at its own strikes. d.market_stress (see bot.py's
+     _market_stress_scenarios()). -->
+<h2>Market Stress Test <span style="font-weight:400;color:var(--dim);font-size:11px">(account P&amp;L if SPX moves this much, right now, in one direction -- beta-weighted, repriced at real strikes)</span></h2>
+<table id="stresstable" style="display:none">
+  <thead><tr><th>SPX Move</th><th>Portfolio P&amp;L</th></tr></thead>
+  <tbody></tbody>
+</table>
+<div id="stresscaveat" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 16px">
+  Each scenario translates the SPX move into a per-ticker move via that ticker's real live beta, then reprices
+  that spread's real payoff at its own real strikes with live IV (bumped up on down-moves, down on up-moves,
+  since a real multi-percent SPX move rarely happens without volatility moving too). Not a forecast of what
+  WILL happen -- an answer to "what would this specific move do to the account right now." <span id="stressnote"></span>
+</div>
+
 <!-- 2026-08-18: moved above Closed Positions (previously below Portfolio
      Risk Profile, above Closed Positions in creation order) per explicit
      request ("bring SPX forward above closed position but below month-end
@@ -577,6 +598,28 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   } else {
     $('monthprojcards').style.display = 'none';
     $('monthprojcaveat').style.display = 'none';
+  }
+
+  // 2026-09-19: market stress test -- d.market_stress (see bot.py's
+  // _market_stress_scenarios()). scenario_totals keys are already
+  // formatted move labels ("-5%".."flat".."+5%"), in scenario order.
+  const ms = d.market_stress;
+  if (ms && ms.scenario_totals) {
+    const rows = Object.entries(ms.scenario_totals).map(([label, pnl]) => {
+      const cls = pnl > 0 ? 'green' : (pnl < 0 ? 'red' : '');
+      const highlight = label === 'flat' ? 'style="font-weight:700"' : '';
+      return `<tr ${highlight}><td>${label}</td><td class="${cls}">${money(pnl)}</td></tr>`;
+    }).join('');
+    document.querySelector('#stresstable tbody').innerHTML = rows;
+    $('stresstable').style.display = '';
+    $('stresscaveat').style.display = '';
+    const notes = [];
+    if (ms.positions_excluded > 0) notes.push(`${ms.positions_excluded} MrWhales position(s) excluded this cycle (missing live beta/sigma/spot).`);
+    if (!ms.spx_included) notes.push(`no open SPX condor this cycle, or it couldn't be repriced.`);
+    $('stressnote').textContent = notes.length ? '(' + notes.join(' ') + ')' : '';
+  } else {
+    $('stresstable').style.display = 'none';
+    $('stresscaveat').style.display = 'none';
   }
 
   // staleness: updated string is ET; warn if older than 15 min
