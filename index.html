@@ -171,9 +171,9 @@
      close has passed (see bot.py comment for the exact rule). -->
 <h2>Next-Friday Account Value Projection <span style="font-weight:400;color:var(--dim);font-size:11px">(current net liq + expected value of positions open right now, through <span id="weekprojtarget">this Friday</span>)</span></h2>
 <div class="cards" id="weekprojcards" style="display:none">
-  <div class="card"><div class="label">Worst Case</div><div class="value red" id="weekprojworst">—</div></div>
-  <div class="card"><div class="label">Expected (POP-weighted)</div><div class="value" id="weekprojexpected">—</div></div>
-  <div class="card"><div class="label">Best Case</div><div class="value green" id="weekprojbest">—</div></div>
+  <div class="card"><div class="label">Worst Case</div><div class="value red" id="weekprojworst">—</div><div style="font-size:11px;color:var(--dim)" id="weekprojworstmove"></div></div>
+  <div class="card"><div class="label">Expected (POP-weighted)</div><div class="value" id="weekprojexpected">—</div><div style="font-size:11px;color:var(--dim)" id="weekprojexpectedmove"></div></div>
+  <div class="card"><div class="label">Best Case</div><div class="value green" id="weekprojbest">—</div><div style="font-size:11px;color:var(--dim)" id="weekprojbestmove"></div></div>
 </div>
 <div id="weekprojcaveat" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 16px">
   Same methodology as the month-end projection below, just through this coming Friday's close instead --
@@ -184,9 +184,9 @@
 
 <h2>Month-End Account Value Projection <span style="font-weight:400;color:var(--dim);font-size:11px">(current net liq + expected value of positions open right now)</span></h2>
 <div class="cards" id="monthprojcards" style="display:none">
-  <div class="card"><div class="label">Worst Case</div><div class="value red" id="monthprojworst">—</div></div>
-  <div class="card"><div class="label">Expected (POP-weighted)</div><div class="value" id="monthprojexpected">—</div></div>
-  <div class="card"><div class="label">Best Case</div><div class="value green" id="monthprojbest">—</div></div>
+  <div class="card"><div class="label">Worst Case</div><div class="value red" id="monthprojworst">—</div><div style="font-size:11px;color:var(--dim)" id="monthprojworstmove"></div></div>
+  <div class="card"><div class="label">Expected (POP-weighted)</div><div class="value" id="monthprojexpected">—</div><div style="font-size:11px;color:var(--dim)" id="monthprojexpectedmove"></div></div>
+  <div class="card"><div class="label">Best Case</div><div class="value green" id="monthprojbest">—</div><div style="font-size:11px;color:var(--dim)" id="monthprojbestmove"></div></div>
 </div>
 <div id="monthprojcaveat" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 16px">
   Not a forecast -- current net liq plus each currently-open position's expected move to month-end. A
@@ -561,6 +561,9 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     $('weekprojworst').textContent = money(wep.worst_case);
     $('weekprojexpected').textContent = money(wep.expected);
     $('weekprojbest').textContent = money(wep.best_case);
+    $('weekprojworstmove').textContent = wep.worst_case_spx_move ? `SPX ${wep.worst_case_spx_move}` : '';
+    $('weekprojexpectedmove').textContent = wep.expected_spx_move ? `SPX ${wep.expected_spx_move}` : '';
+    $('weekprojbestmove').textContent = wep.best_case_spx_move ? `SPX ${wep.best_case_spx_move}` : '';
     $('weekprojcards').style.display = '';
     $('weekprojcaveat').style.display = '';
     $('weekprojtarget').textContent = wep.target_friday || 'this Friday';
@@ -587,6 +590,9 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     $('monthprojworst').textContent = money(mep.worst_case);
     $('monthprojexpected').textContent = money(mep.expected);
     $('monthprojbest').textContent = money(mep.best_case);
+    $('monthprojworstmove').textContent = mep.worst_case_spx_move ? `SPX ${mep.worst_case_spx_move}` : '';
+    $('monthprojexpectedmove').textContent = mep.expected_spx_move ? `SPX ${mep.expected_spx_move}` : '';
+    $('monthprojbestmove').textContent = mep.best_case_spx_move ? `SPX ${mep.best_case_spx_move}` : '';
     $('monthprojcards').style.display = '';
     $('monthprojcaveat').style.display = '';
     const skipped = mep.positions_skipped || 0;
