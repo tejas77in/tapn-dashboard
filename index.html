@@ -352,7 +352,7 @@
      (see spx_multistrat_paper.py's dashboard_snapshot()). 100% paper -- no real capital. -->
 <h2>SPX Multi-Structure Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(short straddle/strangle, butterfly, broken-wing butterfly, calendar -- research track, no real capital)</span></h2>
 <table id="spxmultitable">
-  <thead><tr><th>Structure</th><th>Legs</th><th>Status</th><th>Expiry</th><th>Far Expiry</th><th>DTE</th><th>Entry Credit/Debit</th><th>Max Risk</th><th>Max Profit</th><th>POP</th><th>Unrealized P&amp;L</th><th>Settle Spot</th><th>Realized P&amp;L</th></tr></thead>
+  <thead><tr><th>Structure</th><th>Legs</th><th>Status</th><th>Expiry</th><th>Far Expiry</th><th>DTE</th><th>Entry Credit/Debit</th><th>Max Risk</th><th>Max Profit</th><th>Margin Used</th><th>POP</th><th>Unrealized P&amp;L</th><th>Settle Spot</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -755,7 +755,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     const tb = el.querySelector('tbody');
     const trades = (d.spxmulti && d.spxmulti.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="13" class="empty">No SPX multi-structure trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="14" class="empty">No SPX multi-structure trades yet</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
@@ -792,6 +792,12 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       const upnl = t.last_unrealized_pnl;
       const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
       const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
+      // 2026-09-11 (per explicit request, "can we add margin used"):
+      // margin_used is already a real dollar figure (compute_margin_used()
+      // applies CONTRACT_MULTIPLIER for the 3 defined-risk structures, or
+      // comes straight from Tastytrade's own real dry-run order margin
+      // engine for the 2 undefined-risk ones) -- no x100 needed here.
+      const marginTxt = t.margin_used != null ? money(t.margin_used) : '—';
       return `<tr>
         <td>${t.structure}</td>
         <td style="font-size:11px">${t.legs_summary || '—'}</td>
@@ -802,6 +808,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         <td>${cdTxt}</td>
         <td>${maxRiskTxt}</td>
         <td>${maxProfitTxt}</td>
+        <td>${marginTxt}</td>
         <td>${t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—'}</td>
         <td class="${upnlCls}">${upnlTxt}</td>
         <td>${t.settle_spot != null ? t.settle_spot.toFixed(1) : '—'}</td>
