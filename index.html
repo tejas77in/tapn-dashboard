@@ -160,6 +160,28 @@
      best/worst RANGE (not a single number) since options P&L is
      genuinely uncertain -- per explicit request ("best/worst case
      range"), to avoid implying false precision. -->
+<!-- 2026-09-19: week-end (rolling "this Friday's close") projection, per
+     explicit request ("looking for weekly prediction too") -- same shape/
+     methodology as the month-end card below, just a shorter rolling
+     horizon. d.week_end_projection (bot.py's write_dashboard()). Sits in
+     the same section, above month-end, so both horizons are visible at a
+     glance -- per explicit request ("on the same box we can put next week
+     prediction and month end prediction"). Recalculates fresh every
+     cycle; target Friday rolls forward automatically once that Friday's
+     close has passed (see bot.py comment for the exact rule). -->
+<h2>Next-Friday Account Value Projection <span style="font-weight:400;color:var(--dim);font-size:11px">(current net liq + expected value of positions open right now, through <span id="weekprojtarget">this Friday</span>)</span></h2>
+<div class="cards" id="weekprojcards" style="display:none">
+  <div class="card"><div class="label">Worst Case</div><div class="value red" id="weekprojworst">—</div></div>
+  <div class="card"><div class="label">Expected (POP-weighted)</div><div class="value" id="weekprojexpected">—</div></div>
+  <div class="card"><div class="label">Best Case</div><div class="value green" id="weekprojbest">—</div></div>
+</div>
+<div id="weekprojcaveat" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 16px">
+  Same methodology as the month-end projection below, just through this coming Friday's close instead --
+  a position that actually expires by then uses its full POP-weighted outcome; one with more DTE than days
+  left this week is modeled on theta decay, with best/worst scaled to how much of its remaining life falls
+  within this window. <span id="weekprojfomc"></span> <span id="weekprojnote"></span>
+</div>
+
 <h2>Month-End Account Value Projection <span style="font-weight:400;color:var(--dim);font-size:11px">(current net liq + expected value of positions open right now)</span></h2>
 <div class="cards" id="monthprojcards" style="display:none">
   <div class="card"><div class="label">Worst Case</div><div class="value red" id="monthprojworst">—</div></div>
@@ -508,6 +530,31 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     $('drawdownalert').className = 'value ' + (breached ? 'red' : (v>0?'green':v<0?'amber':''));
   } else {
     $('drawdownalert').textContent = '—';
+  }
+
+  // 2026-09-19: week-end (rolling next-Friday) projection -- see
+  // bot.py's write_dashboard() for the target-Friday rolling rule and
+  // the (same-as-month-end) per-position contribution model.
+  const wep = d.week_end_projection;
+  if (wep && wep.expected != null && wep.best_case != null && wep.worst_case != null) {
+    $('weekprojworst').textContent = money(wep.worst_case);
+    $('weekprojexpected').textContent = money(wep.expected);
+    $('weekprojbest').textContent = money(wep.best_case);
+    $('weekprojcards').style.display = '';
+    $('weekprojcaveat').style.display = '';
+    $('weekprojtarget').textContent = wep.target_friday || 'this Friday';
+    const wskipped = wep.positions_skipped || 0;
+    const wpartial = wep.positions_partial || 0;
+    const wnotes = [];
+    if (wpartial > 0) wnotes.push(`${wpartial} position(s) won't expire by then (${wep.days_to_week_end} day(s) left) -- modeled on theta decay, not full resolution.`);
+    if (wskipped > 0) wnotes.push(`${wskipped} open position(s) missing POP/max-profit data this cycle -- assumed no further change.`);
+    $('weekprojnote').textContent = wnotes.length ? '(' + wnotes.join(' ') + ')' : '';
+    $('weekprojfomc').textContent = wep.has_fomc_this_window
+      ? '⚠️ FOMC decision falls within this window -- real moves around a Fed decision can run wider than a typical week, this range doesn\'t widen for that.'
+      : '';
+  } else {
+    $('weekprojcards').style.display = 'none';
+    $('weekprojcaveat').style.display = 'none';
   }
 
   // 2026-08-17: month-end projection -- d.month_end_projection (see
