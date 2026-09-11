@@ -356,6 +356,19 @@
   <tbody></tbody>
 </table>
 
+<!-- 2026-09-11: LEAP Conviction scanner (real institutional intermarket-
+     sweep LEAP flow, 250-500 DTE, via UW option_trades()) paper-only
+     research track table -- detects a real sweep someone else already
+     made and paper-buys the same contract, scored on insider/political/
+     dark-pool/IV-rank confluence. d.leap.trades (see
+     leap_conviction_paper.py's dashboard_snapshot()). 100% paper -- no
+     real capital. -->
+<h2>LEAP Conviction Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(real institutional intermarket-sweep LEAP flow, 250-500 DTE, insider/political/dark-pool scored -- research track, no real capital)</span></h2>
+<table id="leaptable">
+  <thead><tr><th>Ticker</th><th>Type</th><th>Strike</th><th>Status</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Conviction</th><th>Entry POP</th><th>Current POP</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
+  <tbody></tbody>
+</table>
+
 <!-- 2026-08-04: Portfolio Risk Profile -- per-open-position red/yellow/
      green health check, per request ("add a portfolio risk profile below
      closed position.. is it under water, or is there still scope to
@@ -812,6 +825,49 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         <td>${t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—'}</td>
         <td class="${upnlCls}">${upnlTxt}</td>
         <td>${t.settle_spot != null ? t.settle_spot.toFixed(1) : '—'}</td>
+        <td class="${pnlCls}">${pnlTxt}</td>
+      </tr>`;
+    }).join('');
+  })();
+
+  // 2026-09-11: LEAP Conviction per-trade table -- d.leap.trades (see
+  // leap_conviction_paper.py's dashboard_snapshot()). Same fail-open
+  // convention as every other strategy table above. entry_debit and
+  // last_unrealized_pnl are already real dollars (CONTRACT_MULTIPLIER
+  // applied server-side), same convention as ivcrush/spxmulti above.
+  (function(){
+    const el = $('leaptable');
+    if (!el) return;
+    const tb = el.querySelector('tbody');
+    const trades = (d.leap && d.leap.trades) || [];
+    if (!trades.length) {
+      tb.innerHTML = '<tr><td colspan="13" class="empty">No LEAP Conviction trades yet</td></tr>';
+      return;
+    }
+    tb.innerHTML = trades.map(t => {
+      const pnl = t.realized_pnl;
+      const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
+      const pnlPct = t.realized_pnl_pct_of_debit;
+      const pnlTxt = pnl == null ? '—'
+        : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$') + (pnlPct != null ? ` (${pnlPct.toFixed ? pnlPct.toFixed(1) : pnlPct}%)` : '');
+      const statusTxt = t.status === 'open' ? 'open' : 'closed';
+      const statusCls = t.status === 'open' ? 'amber' : '';
+      const upnl = t.last_unrealized_pnl;
+      const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
+      const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
+      return `<tr>
+        <td>${t.ticker || '—'}</td>
+        <td>${t.opt_type || '—'}</td>
+        <td>${t.strike != null ? t.strike : '—'}</td>
+        <td class="${statusCls}">${statusTxt}</td>
+        <td>${t.entry_date || '—'}</td>
+        <td>${t.expiry || '—'}</td>
+        <td>${t.dte_at_entry ?? '—'}</td>
+        <td>${t.entry_debit != null ? money(t.entry_debit * 100) : '—'}</td>
+        <td title="${t.conviction_notes || ''}">${t.conviction_score ?? '—'}/8</td>
+        <td>${t.entry_pop != null ? (t.entry_pop * 100).toFixed(1) + '%' : '—'}</td>
+        <td>${t.current_pop != null ? (t.current_pop * 100).toFixed(1) + '%' : '—'}</td>
+        <td class="${upnlCls}">${upnlTxt}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
       </tr>`;
     }).join('');
