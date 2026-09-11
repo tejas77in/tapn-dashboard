@@ -919,7 +919,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         `<tr>
           <td>${badge(r.origin)}</td>
           <td>${dot}</td>
-          <td>${r.ticker} ${r.direction ? '('+r.direction+', exp '+expiryFmt+')' : ''}</td>
+          <td>${r.ticker} ${r.direction ? '('+r.direction+', exp '+expiryFmt+')' : (r.expiry ? '(exp '+expiryFmt+')' : '')}</td>
           <td>${r.dte ?? '—'}</td>
           <td class="${pnlCls}">${pnlTxt}</td>
           <td class="red">${maxLossTxt}</td>
