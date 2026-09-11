@@ -352,7 +352,7 @@
      (see spx_multistrat_paper.py's dashboard_snapshot()). 100% paper -- no real capital. -->
 <h2>SPX Multi-Structure Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(short straddle/strangle, butterfly, broken-wing butterfly, calendar -- research track, no real capital)</span></h2>
 <table id="spxmultitable">
-  <thead><tr><th>Structure</th><th>Legs</th><th>Status</th><th>Expiry</th><th>Far Expiry</th><th>DTE</th><th>Entry Credit/Debit</th><th>Max Risk</th><th>Max Profit</th><th>POP</th><th>Settle Spot</th><th>Realized P&amp;L</th></tr></thead>
+  <thead><tr><th>Structure</th><th>Legs</th><th>Status</th><th>Expiry</th><th>Far Expiry</th><th>DTE</th><th>Entry Credit/Debit</th><th>Max Risk</th><th>Max Profit</th><th>POP</th><th>Unrealized P&amp;L</th><th>Settle Spot</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -706,7 +706,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     const tb = el.querySelector('tbody');
     const trades = (d.spxmulti && d.spxmulti.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="12" class="empty">No SPX multi-structure trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="13" class="empty">No SPX multi-structure trades yet</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
@@ -734,6 +734,15 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       // null for short_straddle/short_strangle (undefined risk, not faked).
       const maxRiskTxt = t.max_risk == null ? '—' : money(Math.abs(t.max_risk) * 100);
       const maxProfitTxt = t.max_profit == null ? '—' : money(Math.abs(t.max_profit) * 100);
+      // 2026-09-11 (per explicit request, "add unrealized P&L to see how it
+      // daily behaves"): last_unrealized_pnl is cached server-side by
+      // spx_multistrat_paper.py's mark_open_positions(), re-quoted once per
+      // real scan cycle -- already in real dollars (CONTRACT_MULTIPLIER
+      // applied when computed), so no x100 here unlike entry_credit_debit
+      // above. Only ever populated for open positions.
+      const upnl = t.last_unrealized_pnl;
+      const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
+      const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
       return `<tr>
         <td>${t.structure}</td>
         <td style="font-size:11px">${t.legs_summary || '—'}</td>
@@ -745,6 +754,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         <td>${maxRiskTxt}</td>
         <td>${maxProfitTxt}</td>
         <td>${t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—'}</td>
+        <td class="${upnlCls}">${upnlTxt}</td>
         <td>${t.settle_spot != null ? t.settle_spot.toFixed(1) : '—'}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
       </tr>`;
