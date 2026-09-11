@@ -342,7 +342,7 @@
      dashboard_snapshot()). 100% paper -- no real capital. -->
 <h2>IV Crush Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(earnings calendar spread, slope/volume/IV-RV gated -- research track, no real capital)</span></h2>
 <table id="ivcrushtable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Verdict</th><th>Structure</th><th>Reports</th><th>Entry</th><th>Debit</th><th>Realized P&amp;L</th></tr></thead>
+  <thead><tr><th>Ticker</th><th>Status</th><th>Verdict</th><th>Structure</th><th>Reports</th><th>Entry</th><th>Debit</th><th>POP</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -671,7 +671,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     const tb = el.querySelector('tbody');
     const trades = (d.ivcrush && d.ivcrush.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="8" class="empty">No IV Crush trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="10" class="empty">No IV Crush trades yet</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
@@ -684,6 +684,20 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       const statusCls = t.status === 'open' ? 'amber' : '';
       const verdictCls = t.verdict === 'Recommended' ? 'green' : t.verdict === 'Consider' ? 'amber' : '';
       const structure = `${t.strike}C sell ${t.short_expiry}/buy ${t.long_expiry}`;
+      // 2026-09-11: entry_debit is stored as raw per-contract premium (like
+      // spx_multistrat_paper.py's entry_credit_debit was), not the real
+      // $100-multiplied dollar amount realized_pnl already uses -- x100
+      // here too, same fix as the SPX multi-structure table got 2026-09-10.
+      const debitTxt = t.entry_debit != null ? money(t.entry_debit * 100) : '—';
+      // 2026-09-11 (per explicit request, "add ... POP and Unrealized
+      // P&L"): entry_pop is a real Black-Scholes probability computed at
+      // entry (see ivcrush_paper.py's calendar_pop()); last_unrealized_pnl
+      // is cached server-side by mark_open_positions(), re-quoted once per
+      // real scan cycle -- already in real dollars, no x100 needed.
+      const popTxt = t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—';
+      const upnl = t.last_unrealized_pnl;
+      const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
+      const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
       return `<tr>
         <td>${t.ticker}</td>
         <td class="${statusCls}">${statusTxt}</td>
@@ -691,7 +705,9 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         <td>${structure}</td>
         <td>${t.report_date || '—'} (${t.session || '—'})</td>
         <td>${t.entry_date || '—'}</td>
-        <td>${t.entry_debit != null ? money(t.entry_debit) : '—'}</td>
+        <td>${debitTxt}</td>
+        <td>${popTxt}</td>
+        <td class="${upnlCls}">${upnlTxt}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
       </tr>`;
     }).join('');
