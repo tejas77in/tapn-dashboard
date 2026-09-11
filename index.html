@@ -331,7 +331,7 @@
      same convention as iv_edge/MrBullish above. -->
 <h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital)</span></h2>
 <table id="moonshottable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Payout</th><th>POP</th><th>Tape at Entry</th><th>Realized P&amp;L</th></tr></thead>
+  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Payout</th><th>Entry POP</th><th>Current POP</th><th>Tape at Entry</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -342,7 +342,7 @@
      dashboard_snapshot()). 100% paper -- no real capital. -->
 <h2>IV Crush Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(earnings calendar spread, slope/volume/IV-RV gated -- research track, no real capital)</span></h2>
 <table id="ivcrushtable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Verdict</th><th>Structure</th><th>Reports</th><th>Entry</th><th>Debit</th><th>POP</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
+  <thead><tr><th>Ticker</th><th>Status</th><th>Verdict</th><th>Structure</th><th>Reports</th><th>Entry</th><th>Debit</th><th>Entry POP</th><th>Current POP</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -625,7 +625,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     const tb = el.querySelector('tbody');
     const trades = (d.moonshot && d.moonshot.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="11" class="empty">No Moonshot trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="12" class="empty">No Moonshot trades yet</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
@@ -635,6 +635,16 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       const statusTxt = t.status === 'open' ? 'open' : 'closed';
       const statusCls = t.status === 'open' ? 'amber' : '';
       const structure = `${t.long_strike}/${t.short_strike}${t.direction === 'call' ? 'C' : 'P'}`;
+      // 2026-09-11: entry_debit is stored as raw per-contract premium, not
+      // the real $100-multiplied dollar amount realized_pnl already uses --
+      // x100 here too, same fix already applied to the SPX multi-structure
+      // and IV Crush tables.
+      const debitTxt = t.entry_debit != null ? money(t.entry_debit * 100) : '—';
+      // 2026-09-11 (per explicit request, "add it to moonshot too"): same
+      // entry_pop (permanent snapshot) vs. current_pop (live, recomputed
+      // by refresh_current_pop() each real scan cycle off today's real
+      // spot/sigma/remaining DTE) split just added to IV Crush.
+      const currentPopTxt = t.current_pop != null ? (t.current_pop * 100).toFixed(0) + '%' : '—';
       // 2026-09-10 (per explicit request, "wiring it might really be the
       // edge"): real options-tape snapshot captured AT ENTRY (see
       // vertical_moonshot_scanner.py's log_paper_entries()). Still just a
@@ -653,9 +663,10 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         <td>${t.entry_date || '—'}</td>
         <td>${t.expiry || '—'}</td>
         <td>${t.dte_at_entry ?? '—'}</td>
-        <td>${t.entry_debit != null ? money(t.entry_debit) : '—'}</td>
+        <td>${debitTxt}</td>
         <td>${t.payout_multiple != null ? t.payout_multiple + 'x' : '—'}</td>
         <td>${t.entry_pop != null ? (t.entry_pop * 100).toFixed(0) + '%' : '—'}</td>
+        <td>${currentPopTxt}</td>
         <td style="font-size:11px" title="Real premium/tag proxy -- cannot distinguish a hedge, a market-maker wall, or a pre-planned squeeze setup">${smTxt}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
       </tr>`;
@@ -671,7 +682,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     const tb = el.querySelector('tbody');
     const trades = (d.ivcrush && d.ivcrush.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="10" class="empty">No IV Crush trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="11" class="empty">No IV Crush trades yet</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
@@ -691,10 +702,17 @@ window.toggleMwGroup = function(groupKey, headerEl) {
       const debitTxt = t.entry_debit != null ? money(t.entry_debit * 100) : '—';
       // 2026-09-11 (per explicit request, "add ... POP and Unrealized
       // P&L"): entry_pop is a real Black-Scholes probability computed at
-      // entry (see ivcrush_paper.py's calendar_pop()); last_unrealized_pnl
-      // is cached server-side by mark_open_positions(), re-quoted once per
-      // real scan cycle -- already in real dollars, no x100 needed.
-      const popTxt = t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—';
+      // entry (permanent snapshot, never touched again -- same no-backfill
+      // policy used everywhere else in this codebase). current_pop is a
+      // DIFFERENT, live view -- recomputed by mark_open_positions() each
+      // real scan cycle using today's real spot/IV30/remaining DTE, so it
+      // moves day to day as the position ages (added 2026-09-11 per
+      // "why can't we get the current POP for those positions"since
+      // backfilling entry_pop itself would misrepresent history, but a
+      // live re-derivation has no such problem). last_unrealized_pnl is
+      // cached the same way, already in real dollars, no x100 needed.
+      const entryPopTxt = t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—';
+      const currentPopTxt = t.current_pop != null ? (t.current_pop * 100).toFixed(1) + '%' : '—';
       const upnl = t.last_unrealized_pnl;
       const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
       const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
@@ -706,7 +724,8 @@ window.toggleMwGroup = function(groupKey, headerEl) {
         <td>${t.report_date || '—'} (${t.session || '—'})</td>
         <td>${t.entry_date || '—'}</td>
         <td>${debitTxt}</td>
-        <td>${popTxt}</td>
+        <td>${entryPopTxt}</td>
+        <td>${currentPopTxt}</td>
         <td class="${upnlCls}">${upnlTxt}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
       </tr>`;
