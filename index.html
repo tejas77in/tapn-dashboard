@@ -370,18 +370,6 @@
 <h2>iv_edge Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(deep-ITM call debit verticals -- research track, no real capital) -- <a href="iv_edge.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
 <div id="ivedgesummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 
-<!-- 2026-09-04: MrBullish (Ichimoku Cloud + breadth-gated, paper-only
-     research track) per-ticker table -- added per explicit request
-     ("add Mr bullish paper trade also to dashboard"). d.mrbullish.trades
-     (see mrbullish_paper.py's dashboard_snapshot()). Still 100% paper --
-     no real capital, shown here purely for visibility, same convention
-     as the iv_edge table above. -->
-<h2>MrBullish Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(Ichimoku Cloud + market-breadth gated -- research track, no real capital)</span></h2>
-<table id="mrbullishtable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Entry</th><th>Entry Price</th><th>Exit</th><th>Exit Reason</th><th>Return %</th></tr></thead>
-  <tbody></tbody>
-</table>
-
 <!-- 2026-09-10: Moonshot (far-OTM low-IV vertical, 90-365 DTE, paper-only
      research track) per-ticker table -- added per "I dont see the trades
      on dashboard": this strategy's paper trades were logging fine to
@@ -389,7 +377,7 @@
      carried them into dashboard_data.js until now. d.moonshot.trades
      (see vertical_moonshot_scanner.py's dashboard_snapshot()). Still
      100% paper -- no real capital, shown here purely for visibility,
-     same convention as iv_edge/MrBullish above. -->
+     same convention as the iv_edge table above. -->
 <h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital) -- <a href="moonshot.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
 <div id="moonshotsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 
@@ -663,38 +651,9 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     el.innerHTML = `${trades.length} trades (${open} open, ${closed} closed) &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
   })();
 
-  // 2026-09-04: MrBullish per-ticker table -- d.mrbullish.trades (see
-  // mrbullish_paper.py's dashboard_snapshot()). Same fail-open convention
-  // as the iv_edge table above -- falls back to an empty-state row if the
-  // field is missing rather than throwing.
-  (function(){
-    const tb = $('mrbullishtable').querySelector('tbody');
-    const trades = (d.mrbullish && d.mrbullish.trades) || [];
-    if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="7" class="empty">No MrBullish trades yet</td></tr>';
-      return;
-    }
-    tb.innerHTML = trades.map(t => {
-      const ret = t.return_pct;
-      const retCls = ret == null ? '' : (ret > 0 ? 'green' : ret < 0 ? 'red' : '');
-      const retTxt = ret == null ? '\u2014' : (ret >= 0 ? '+' : '') + ret + '%';
-      const statusTxt = t.status === 'open' ? 'open' : 'closed';
-      const statusCls = t.status === 'open' ? 'amber' : '';
-      return `<tr>
-        <td>${t.ticker}</td>
-        <td class="${statusCls}">${statusTxt}</td>
-        <td>${t.entry_date || '\u2014'}</td>
-        <td>${t.entry_price != null ? money(t.entry_price) : '\u2014'}</td>
-        <td>${t.exit_date || '\u2014'}</td>
-        <td>${t.exit_reason || '\u2014'}</td>
-        <td class="${retCls}">${retTxt}</td>
-      </tr>`;
-    }).join('');
-  })();
-
   // 2026-09-10: Moonshot per-ticker table -- d.moonshot.trades (see
   // vertical_moonshot_scanner.py's dashboard_snapshot()). Same fail-open
-  // convention as iv_edge/MrBullish above.
+  // convention as iv_edge above.
   // 2026-09-14: full per-trade table moved to moonshot.html (per explicit
   // request, "moonshot paper trade is getting big.. create a tab that
   // lands to a different page") -- this now just renders a one-line
