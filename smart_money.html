@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<title>TAPN Trading Technologies — Moonshot Paper Trades</title>
+<title>TAPN Trading Technologies — Smart Money</title>
 <style>
   :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --dim:#8b949e;
           --green:#3fb950; --red:#f85149; --amber:#d29922; --blue:#58a6ff; }
@@ -19,19 +19,14 @@
   .green{color:var(--green)} .red{color:var(--red)} .amber{color:var(--amber)} .blue{color:var(--blue)}
   .empty { color:var(--dim); padding:16px; text-align:center; }
   .stale { background:#3d2c1f; border:1px solid var(--amber); color:var(--amber); padding:10px 14px; border-radius:8px; margin-bottom:16px; display:none; }
-  /* 2026-09-14: shared tab bar linking dashboard.html <-> moonshot.html <->
-     iv_edge.html <-> ivcrush.html (per explicit request, "moonshot paper
-     trade is getting big.. create a tab that lands to a different page for
-     that table and even IV edge and IV Crush"). build_index.py rewrites
-     the "Dashboard" tab's href from dashboard.html -> index.html when
-     publishing to Vercel (see that script's docstring) -- every OTHER
-     link here keeps the same filename locally and published, so it works
-     unmodified in both places. -->
   .navtabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
   .navtabs a { padding:6px 14px; border-radius:6px; background:var(--card); border:1px solid var(--border);
     color:var(--text); text-decoration:none; font-size:13px; }
   .navtabs a:hover { border-color:var(--blue); color:var(--blue); }
   .navtabs a.active { border-color:var(--blue); color:var(--blue); font-weight:600; }
+  .scorebar { display:inline-block; width:60px; height:6px; background:var(--border); border-radius:3px; overflow:hidden; vertical-align:middle; margin-right:6px; }
+  .scorebar-fill { height:100%; background:var(--blue); }
+  .subscores { font-size:11px; color:var(--dim); }
   /* --- password gate (added for the published Vercel copy only -- not
      present on the local dashboard.html bot.py serves. Client-side only,
      meant to stop casual/accidental discovery of the link, not a real
@@ -65,15 +60,21 @@
 <div class="stale" id="stale">⚠ Data is stale — the bot may not be running. Check HEARTBEAT.txt / restart bot.py</div>
 <div class="navtabs">
   <a href="index.html">Dashboard</a>
-  <a href="moonshot.html" id="navmoonshot">Moonshot</a>
-  <a href="iv_edge.html" id="navivedge">IV Edge</a>
-  <a href="ivcrush.html" id="navivcrush">IV Crush</a>
-  <a href="smart_money.html">Smart Money</a>
+  <a href="moonshot.html">Moonshot</a>
+  <a href="iv_edge.html">IV Edge</a>
+  <a href="ivcrush.html">IV Crush</a>
+  <a href="smart_money.html" id="navsmartmoney">Smart Money</a>
 </div>
 
-<h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital)</span></h2>
-<table id="moonshottable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Payout</th><th>Entry POP</th><th>Current POP</th><th>Tape at Entry</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
+<h2>Accumulation Rankings <span style="font-weight:400;color:var(--dim);font-size:11px">(weighted composite: insider 40% / dark pool 30% / institutional 20% / congress 10% -- see smart_money_accumulation.py composite_accumulation_score(). IV rank/percentile and gamma walls refreshed once/day.)</span></h2>
+<table id="rankingstable">
+  <thead><tr><th>Ticker</th><th>Composite</th><th>Insider</th><th>Dark Pool</th><th>Institutional</th><th>Congress</th><th>% of Float</th><th>Price</th><th>IV Rank</th><th>IV %ile</th><th>Call Wall</th><th>Put Wall</th><th>Gamma Flip</th><th>As Of</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>Smart Money Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(bull call debit spread, auto-fired when composite score &ge; threshold -- delta-targeted strikes ~0.35/0.15, ~30-45 DTE -- research track, no real capital)</span></h2>
+<table id="smtable">
+  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Composite</th><th>Sources</th><th>Debit</th><th>Max Risk</th><th>Max Profit</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -82,10 +83,11 @@
 (function(){
   const d = window.BOT_DATA;
   const $ = id => document.getElementById(id);
-  const nav = document.getElementById('navmoonshot');
+  const nav = document.getElementById('navsmartmoney');
   if (nav) nav.className = 'active';
   if (!d) { $('stale').style.display='block'; $('stale').textContent='No data yet — start bot.py and this page will populate.'; return; }
   const money = v => (v==null||isNaN(v)) ? '—' : '$' + Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const num = (v, d) => (v==null||isNaN(v)) ? '—' : Number(v).toFixed(d==null?0:d);
   $('updated').textContent = d.updated || '—';
   $('mkt').textContent = d.market_open ? 'market OPEN' : 'market closed';
   try {
@@ -93,50 +95,71 @@
     if (Date.now() - ts.getTime() > 15*60*1000) $('stale').style.display='block';
   } catch(e){}
 
-  // 2026-09-10: Moonshot per-ticker table -- d.moonshot.trades (see
-  // vertical_moonshot_scanner.py's dashboard_snapshot()). Same fail-open
-  // convention as iv_edge/MrBullish above. Moved to its own page
-  // 2026-09-14 (per explicit request, "moonshot paper trade is getting
-  // big.. create a tab that lands to a different page") -- identical
-  // rendering logic, unchanged, just relocated off the main dashboard.
+  // Rankings table -- d.smart_money_rankings (accumulation_db.latest_composite_rankings())
   (function(){
-    const el = $('moonshottable');
+    const el = $('rankingstable');
     if (!el) return;
     const tb = el.querySelector('tbody');
-    const trades = (d.moonshot && d.moonshot.trades) || [];
+    const rows = d.smart_money_rankings || [];
+    if (!rows.length) {
+      tb.innerHTML = '<tr><td colspan="14" class="empty">No composite scores logged yet -- runs daily via smart_money_accumulation.py</td></tr>';
+      return;
+    }
+    const sub = v => v==null ? '—' : Math.round(v*100) + '%';
+    tb.innerHTML = rows.map(r => {
+      const score = r.composite_score;
+      const scoreCls = score >= 60 ? 'green' : score >= 40 ? 'amber' : '';
+      return `<tr>
+        <td><b>${r.ticker}</b></td>
+        <td class="${scoreCls}"><span class="scorebar"><span class="scorebar-fill" style="width:${Math.min(100, score||0)}%"></span></span>${num(score,1)}</td>
+        <td class="subscores">${sub(r.insider_subscore)}</td>
+        <td class="subscores">${sub(r.darkpool_subscore)}</td>
+        <td class="subscores">${sub(r.institutional_subscore)}</td>
+        <td class="subscores">${sub(r.congress_subscore)}</td>
+        <td>${r.combined_pct_shares != null ? num(r.combined_pct_shares,4) + '%' : '—'}</td>
+        <td>${r.current_price != null ? money(r.current_price) : '—'}</td>
+        <td>${r.iv_rank != null ? num(r.iv_rank,1) + '%' : '—'}</td>
+        <td>${r.iv_percentile != null ? num(r.iv_percentile,1) + '%' : '—'}</td>
+        <td>${r.call_wall != null ? num(r.call_wall,2) : '—'}</td>
+        <td>${r.put_wall != null ? num(r.put_wall,2) : '—'}</td>
+        <td>${r.gamma_flip != null ? num(r.gamma_flip,2) : '—'}</td>
+        <td style="font-size:11px;color:var(--dim)">${r.run_date || '—'}</td>
+      </tr>`;
+    }).join('');
+  })();
+
+  // Paper trades table -- d.smart_money.trades (smart_money_paper.py dashboard_snapshot())
+  (function(){
+    const el = $('smtable');
+    if (!el) return;
+    const tb = el.querySelector('tbody');
+    const trades = (d.smart_money && d.smart_money.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="13" class="empty">No Moonshot trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="13" class="empty">No Smart Money paper trades yet -- fires automatically when a ticker\\'s composite score crosses the trade threshold</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
       const pnl = t.realized_pnl;
       const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
       const pnlTxt = pnl == null ? '—' : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$');
-      const statusTxt = t.status === 'open' ? 'open' : 'closed';
-      const statusCls = t.status === 'open' ? 'amber' : '';
-      const structure = `${t.long_strike}/${t.short_strike}${t.direction === 'call' ? 'C' : 'P'}`;
-      const debitTxt = t.entry_debit != null ? money(t.entry_debit * 100) : '—';
-      const currentPopTxt = t.current_pop != null ? (t.current_pop * 100).toFixed(0) + '%' : '—';
-      const smLeanCls = t.sm_lean === 'bullish' ? 'green' : t.sm_lean === 'bearish' ? 'red' : '';
-      const smTxt = t.sm_trade_count ? `<span class="${smLeanCls}">${t.sm_lean || 'mixed'}</span>` +
-        ` (${t.sm_trade_count} trades, $${(t.sm_total_premium || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} prem` +
-        (t.sm_sweep_count ? `, ${t.sm_sweep_count} sweep` : '') +
-        (t.sm_block_count ? `, ${t.sm_block_count} block` : '') + ')' : '—';
       const upnl = t.last_unrealized_pnl;
       const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
       const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
+      const statusTxt = t.status === 'open' ? 'open' : 'closed';
+      const statusCls = t.status === 'open' ? 'amber' : '';
+      const structure = `${num(t.long_strike,0)}/${num(t.short_strike,0)}C`;
       return `<tr>
-        <td>${t.ticker}</td>
+        <td><b>${t.ticker}</b></td>
         <td class="${statusCls}">${statusTxt}</td>
         <td>${structure}</td>
         <td>${t.entry_date || '—'}</td>
         <td>${t.expiry || '—'}</td>
         <td>${t.dte_at_entry ?? '—'}</td>
-        <td>${debitTxt}</td>
-        <td>${t.payout_multiple != null ? t.payout_multiple + 'x' : '—'}</td>
-        <td>${t.entry_pop != null ? (t.entry_pop * 100).toFixed(0) + '%' : '—'}</td>
-        <td>${currentPopTxt}</td>
-        <td style="font-size:11px" title="Real premium/tag proxy -- cannot distinguish a hedge, a market-maker wall, or a pre-planned squeeze setup">${smTxt}</td>
+        <td>${num(t.composite_score,1)}</td>
+        <td style="font-size:11px;color:var(--dim)">${t.active_sources || '—'}</td>
+        <td>${t.entry_debit != null ? money(t.entry_debit * 100) : '—'}</td>
+        <td>${t.max_risk != null ? money(t.max_risk) : '—'}</td>
+        <td>${t.max_profit != null ? money(t.max_profit) : '—'}</td>
         <td class="${upnlCls}">${upnlTxt}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
       </tr>`;
