@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<title>TAPN Trading Technologies — IV Crush Paper Trades</title>
+<title>TAPN Trading Technologies — SPX Multi-Structure</title>
 <style>
   :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --dim:#8b949e;
           --green:#3fb950; --red:#f85149; --amber:#d29922; --blue:#58a6ff; }
@@ -57,17 +57,17 @@
 <div class="stale" id="stale">⚠ Data is stale — the bot may not be running. Check HEARTBEAT.txt / restart bot.py</div>
 <div class="navtabs">
   <a href="index.html">Dashboard</a>
-  <a href="moonshot.html" id="navmoonshot">Moonshot</a>
-  <a href="iv_edge.html" id="navivedge">IV Edge</a>
-  <a href="ivcrush.html" id="navivcrush">IV Crush</a>
+  <a href="moonshot.html">Moonshot</a>
+  <a href="iv_edge.html">IV Edge</a>
+  <a href="ivcrush.html">IV Crush</a>
   <a href="smart_money.html">Smart Money</a>
-  <a href="spx_multistrat.html">SPX Multi-Structure</a>
+  <a href="spx_multistrat.html" id="navspxmulti">SPX Multi-Structure</a>
   <a href="leap_conviction.html">LEAP Conviction</a>
 </div>
 
-<h2>IV Crush Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(earnings calendar spread, slope/volume/IV-RV gated -- research track, no real capital)</span></h2>
-<table id="ivcrushtable">
-  <thead><tr><th>Ticker</th><th>Variant</th><th>Status</th><th>Verdict</th><th>Structure</th><th>Reports</th><th>Entry</th><th>Debit/Credit</th><th>Entry POP</th><th>Current POP</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
+<h2>SPX Multi-Structure Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(short straddle/strangle, iron fly/condor, butterfly, broken-wing butterfly, long straddle/strangle, calendar, put credit spread -- research track, no real capital. Exits early at 50% of max profit or 30% stop loss (3x credit for the 2 undefined-risk structures), otherwise held to expiry.)</span></h2>
+<table id="spxmultitable">
+  <thead><tr><th>Structure</th><th>Legs</th><th>Status</th><th>Expiry</th><th>Far Expiry</th><th>DTE</th><th>Entry Credit/Debit</th><th>Max Risk</th><th>Max Profit</th><th>Margin Used</th><th>POP</th><th>Unrealized P&amp;L</th><th>Settle Spot</th><th>Realized P&amp;L</th><th>Exit Reason</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -76,7 +76,7 @@
 (function(){
   const d = window.BOT_DATA;
   const $ = id => document.getElementById(id);
-  const nav = document.getElementById('navivcrush');
+  const nav = document.getElementById('navspxmulti');
   if (nav) nav.className = 'active';
   if (!d) { $('stale').style.display='block'; $('stale').textContent='No data yet — start bot.py and this page will populate.'; return; }
   const money = v => (v==null||isNaN(v)) ? '—' : '$' + Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -87,50 +87,56 @@
     if (Date.now() - ts.getTime() > 15*60*1000) $('stale').style.display='block';
   } catch(e){}
 
+  // SPX multi-structure per-trade table -- d.spxmulti.trades (see
+  // spx_multistrat_paper.py's dashboard_snapshot()). Moved to its own page
+  // 2026-09-15, same relocation pattern as moonshot/iv_edge/ivcrush/smart_money
+  // before it -- identical rendering logic, just relocated off the main
+  // dashboard, plus a new Exit Reason column (early 50%-profit/30%-stop
+  // exits vs. a normal expiry settle, which leaves it blank).
   (function(){
-    const el = $('ivcrushtable');
+    const el = $('spxmultitable');
     if (!el) return;
     const tb = el.querySelector('tbody');
-    const trades = (d.ivcrush && d.ivcrush.trades) || [];
+    const trades = (d.spxmulti && d.spxmulti.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="12" class="empty">No IV Crush trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="15" class="empty">No SPX multi-structure trades yet</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
       const pnl = t.realized_pnl;
       const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
-      const pnlPct = t.realized_pnl_pct_of_debit;
+      const pnlPct = t.realized_pnl_pct;
       const pnlTxt = pnl == null ? '—'
-        : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$') + (pnlPct != null ? ` (${pnlPct}%)` : '');
+        : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$') + (pnlPct != null ? ` (${pnlPct.toFixed ? pnlPct.toFixed(1) : pnlPct}%)` : '');
       const statusTxt = t.status === 'open' ? 'open' : 'closed';
       const statusCls = t.status === 'open' ? 'amber' : '';
-      const verdictCls = t.verdict === 'Recommended' ? 'green' : t.verdict === 'Consider' ? 'amber' : '';
-      const isReverse = t.variant === 'reverse';
-      const structure = isReverse
-        ? `${t.strike}C buy ${t.short_expiry}/sell ${t.long_expiry}`
-        : `${t.strike}C sell ${t.short_expiry}/buy ${t.long_expiry}`;
-      const variantCls = isReverse ? 'amber' : '';
-      const rawDebit = t.entry_debit;
-      const debitTxt = rawDebit == null ? '—'
-        : (rawDebit >= 0 ? 'debit ' : 'credit ') + money(Math.abs(rawDebit) * 100);
-      const entryPopTxt = t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—';
-      const currentPopTxt = t.current_pop != null ? (t.current_pop * 100).toFixed(1) + '%' : '—';
+      const cd = t.entry_credit_debit;
+      const cdTxt = cd == null ? '—' : (cd >= 0 ? 'credit ' : 'debit ') + money(Math.abs(cd) * 100);
+      const maxRiskTxt = t.max_risk == null ? '—' : money(Math.abs(t.max_risk) * 100);
+      const maxProfitTxt = t.max_profit == null ? '—' : money(Math.abs(t.max_profit) * 100);
       const upnl = t.last_unrealized_pnl;
       const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
       const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
+      const marginTxt = t.margin_used != null ? money(t.margin_used) : '—';
+      const exitReasonTxt = t.exit_reason
+        ? `<span style="font-size:11px" class="${t.exit_reason.startsWith('profit_target') ? 'green' : 'red'}">${t.exit_reason.replace(/_/g,' ')}</span>`
+        : (t.status === 'closed' ? '<span style="font-size:11px;color:var(--dim)">expiry settle</span>' : '—');
       return `<tr>
-        <td>${t.ticker}</td>
-        <td class="${variantCls}">${isReverse ? 'reverse' : 'calendar'}</td>
+        <td>${t.structure}</td>
+        <td style="font-size:11px">${t.legs_summary || '—'}</td>
         <td class="${statusCls}">${statusTxt}</td>
-        <td class="${verdictCls}">${t.verdict || '—'}</td>
-        <td>${structure}</td>
-        <td>${t.report_date || '—'} (${t.session || '—'})</td>
-        <td>${t.entry_date || '—'}</td>
-        <td>${debitTxt}</td>
-        <td>${entryPopTxt}</td>
-        <td>${currentPopTxt}</td>
+        <td>${t.expiry || '—'}</td>
+        <td>${t.far_expiry || '—'}</td>
+        <td>${t.dte ?? '—'}</td>
+        <td>${cdTxt}</td>
+        <td>${maxRiskTxt}</td>
+        <td>${maxProfitTxt}</td>
+        <td>${marginTxt}</td>
+        <td>${t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—'}</td>
         <td class="${upnlCls}">${upnlTxt}</td>
+        <td>${t.settle_spot != null ? t.settle_spot.toFixed(1) : '—'}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
+        <td>${exitReasonTxt}</td>
       </tr>`;
     }).join('');
   })();
