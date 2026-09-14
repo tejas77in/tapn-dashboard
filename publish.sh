@@ -25,8 +25,18 @@ echo "=== $(date '+%Y-%m-%d %H:%M:%S %Z') (PATH=$PATH) ==="
 # always failed and `set -e` killed the script before it ever reached the
 # git add/commit/push, which is why the published dashboard never updated
 # even though bot.py's own dashboard_data.js was refreshing fine.
-TAPN_DIR="/Volumes/WD_Extention/TAPN"
+TAPN_DIR="/Users/tejas/TAPN"
 cp "$TAPN_DIR/dashboard_data.js" ./dashboard_data.js
+
+# 2026-09-14: Moonshot/iv_edge/IV Crush split off the main dashboard into
+# their own static pages (per explicit request, "moonshot paper trade is
+# getting big.. create a tab that lands to a different page for that
+# table and even IV edge and IV Crush") -- these three source files also
+# need to exist alongside dashboard.html for build_index.py's PAGES list
+# to find them (it reads straight from $TAPN_DIR, same as dashboard.html
+# always has -- no copy into this repo needed for the SOURCE files, only
+# their gated build_index.py OUTPUT gets committed below). Nothing to cp
+# here since build_index.py reads them directly from $TAPN_DIR/*.html.
 
 # 2026-09-04 (per explicit request, "make sure when we change dashboard.html
 # it automatically updates the github repo and vercel website"): rebuild
@@ -40,7 +50,7 @@ cp "$TAPN_DIR/dashboard_data.js" ./dashboard_data.js
 # hasn't changed since the last run.
 python3 build_index.py
 
-git add dashboard_data.js index.html
+git add dashboard_data.js index.html moonshot.html iv_edge.html ivcrush.html
 if git diff --cached --quiet; then
   echo "No changes since last publish -- nothing to push."
   exit 0

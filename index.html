@@ -42,6 +42,18 @@
   .origin-MrW { background:#1f2d3d; color:var(--blue); }
   .origin-MrS { background:#1f3d26; color:var(--green); }
   .origin-MrM { background:#3d2c1f; color:var(--amber); }
+  /* 2026-09-14: shared tab bar linking dashboard.html <-> moonshot.html <->
+     iv_edge.html <-> ivcrush.html (per explicit request, "moonshot paper
+     trade is getting big.. create a tab that lands to a different page for
+     that table and even IV edge and IV Crush"). build_index.py rewrites
+     the "Dashboard" tab's href from dashboard.html -> index.html when
+     publishing to Vercel -- every other link here keeps the same filename
+     locally and published. */
+  .navtabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .navtabs a { padding:6px 14px; border-radius:6px; background:var(--card); border:1px solid var(--border);
+    color:var(--text); text-decoration:none; font-size:13px; }
+  .navtabs a:hover { border-color:var(--blue); color:var(--blue); }
+  .navtabs a.active { border-color:var(--blue); color:var(--blue); font-weight:600; }
   /* --- password gate (added for the published Vercel copy only -- not
      present on the local dashboard.html bot.py serves. Client-side only,
      meant to stop casual/accidental discovery of the link, not a real
@@ -73,6 +85,12 @@
 <h1>TAPN Trading Technologies <span id="mode" class="pill dry">—</span></h1>
 <div class="sub">updated <span id="updated">—</span> · <span id="mkt">—</span></div>
 <div class="stale" id="stale">⚠ Data is stale — the bot may not be running. Check HEARTBEAT.txt / restart bot.py</div>
+<div class="navtabs">
+  <a href="index.html" class="active">Dashboard</a>
+  <a href="moonshot.html">Moonshot</a>
+  <a href="iv_edge.html">IV Edge</a>
+  <a href="ivcrush.html">IV Crush</a>
+</div>
 
 <div class="cards">
   <div class="card"><div class="label">Total Account Value</div><div class="value" id="acctvalue">—</div></div>
@@ -346,11 +364,8 @@
      iv_edge_vertical_trades.db. d.iv_edge.trades (see
      iv_edge_vertical_test.py's dashboard_snapshot()). Still 100% paper --
      no real capital, shown here purely for visibility. -->
-<h2>iv_edge Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(deep-ITM call debit verticals -- research track, no real capital)</span></h2>
-<table id="ivedgetable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Entry</th><th>Expiry</th><th>DTE @ Entry</th><th>Exit</th><th>Exit Reason</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
-  <tbody></tbody>
-</table>
+<h2>iv_edge Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(deep-ITM call debit verticals -- research track, no real capital) -- <a href="iv_edge.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
+<div id="ivedgesummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 
 <!-- 2026-09-04: MrBullish (Ichimoku Cloud + breadth-gated, paper-only
      research track) per-ticker table -- added per explicit request
@@ -372,22 +387,16 @@
      (see vertical_moonshot_scanner.py's dashboard_snapshot()). Still
      100% paper -- no real capital, shown here purely for visibility,
      same convention as iv_edge/MrBullish above. -->
-<h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital)</span></h2>
-<table id="moonshottable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Payout</th><th>Entry POP</th><th>Current POP</th><th>Tape at Entry</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
-  <tbody></tbody>
-</table>
+<h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital) -- <a href="moonshot.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
+<div id="moonshotsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 
 <!-- 2026-09-10: IV Crush (earnings calendar spread, paper-only research
      track) per-ticker table -- new strategy, added to the dashboard from
      day one (unlike Moonshot above, which was retrofitted after the gap
      was found). d.ivcrush.trades (see ivcrush_paper.py's
      dashboard_snapshot()). 100% paper -- no real capital. -->
-<h2>IV Crush Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(earnings calendar spread, slope/volume/IV-RV gated -- research track, no real capital)</span></h2>
-<table id="ivcrushtable">
-  <thead><tr><th>Ticker</th><th>Variant</th><th>Status</th><th>Verdict</th><th>Structure</th><th>Reports</th><th>Entry</th><th>Debit/Credit</th><th>Entry POP</th><th>Current POP</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
-  <tbody></tbody>
-</table>
+<h2>IV Crush Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(earnings calendar spread, slope/volume/IV-RV gated -- research track, no real capital) -- <a href="ivcrush.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
+<div id="ivcrushsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 
 <!-- 2026-09-10: SPX multi-structure (short straddle/strangle, butterfly,
      broken-wing butterfly, calendar) paper-only research track table --
@@ -643,57 +652,19 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   // iv_edge_vertical_test.py's dashboard_snapshot()). Falls back to the
   // empty-state row if the field is missing (older dashboard_data.js
   // written before this table existed) rather than throwing.
+  // 2026-09-14: full per-trade table moved to iv_edge.html (per explicit
+  // request, alongside Moonshot/IV Crush) -- this now just renders a
+  // one-line open/closed + $ summary so the main dashboard stays compact.
   (function(){
-    const tb = $('ivedgetable').querySelector('tbody');
+    const el = $('ivedgesummary');
+    if (!el) return;
     const trades = (d.iv_edge && d.iv_edge.trades) || [];
-    if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="9" class="empty">No iv_edge trades yet</td></tr>';
-      return;
-    }
-    tb.innerHTML = trades.map(t => {
-      const pnl = t.realized_pnl;
-      const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
-      const pnlTxt = pnl == null ? '\u2014' : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$');
-      // 2026-09-04: PRIMARY figure switched to the MID-price mark
-      // (unrealized_pnl_mid), not the old worst-case mark -- a live post-
-      // mortem found worst-case (sell long at bid, buy back short at ask)
-      // was showing large fake "losses" on deep-ITM verticals whose
-      // underlying had actually rallied in the trade's favor, purely
-      // because these legs carry wide absolute dollar bid-ask spreads.
-      // Falls back to the old worst-case field only if a mid mark isn't
-      // available yet (e.g. right after this rolled out, before the next
-      // monitor cycle re-marks each open position). Worst-case is still
-      // shown alongside, smaller, as the conservative "what you'd
-      // actually get if you closed this second" reference number.
-      const upnlMid = t.unrealized_pnl_mid;
-      const upnlWorst = t.unrealized_pnl;
-      const upnl = upnlMid != null ? upnlMid : upnlWorst;
-      const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
-      const capturePct = upnlMid != null ? t.capture_pct_mid : t.capture_pct;
-      // 2026-09-02: unrealized P&L only means anything while the trade is
-      // still open -- once closed, realized_pnl is the real number and
-      // unrealized (a stale last-marked value from before it closed)
-      // would be misleading shown alongside it, so blank it out.
-      const upnlTxt = (t.status !== 'open' || upnl == null) ? '\u2014'
-        : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$')
-          + (capturePct != null ? ` (${capturePct}%)` : '')
-          + (t.status === 'open' && upnlWorst != null && upnlMid != null
-             ? ` <span style="opacity:.6;font-size:.85em">[worst-case ${upnlWorst >= 0 ? '+' : ''}${money(upnlWorst).replace('$-', '-$')}]</span>`
-             : '');
-      const statusTxt = t.status === 'open' ? 'open' : 'closed';
-      const statusCls = t.status === 'open' ? 'amber' : '';
-      return `<tr>
-        <td>${t.ticker}</td>
-        <td class="${statusCls}">${statusTxt}</td>
-        <td>${t.entry_date || '\u2014'}</td>
-        <td>${t.expiry || '\u2014'}</td>
-        <td>${t.dte_at_entry ?? '\u2014'}</td>
-        <td>${t.exit_date || '\u2014'}</td>
-        <td>${t.exit_reason || '\u2014'}</td>
-        <td class="${upnlCls}">${upnlTxt}</td>
-        <td class="${pnlCls}">${pnlTxt}</td>
-      </tr>`;
-    }).join('');
+    if (!trades.length) { el.textContent = 'No iv_edge trades yet'; return; }
+    const open = trades.filter(t => t.status === 'open').length;
+    const closed = trades.length - open;
+    const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
+    const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
+    el.innerHTML = `${trades.length} trades (${open} open, ${closed} closed) &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
   })();
 
   // 2026-09-04: MrBullish per-ticker table -- d.mrbullish.trades (see
@@ -728,140 +699,42 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   // 2026-09-10: Moonshot per-ticker table -- d.moonshot.trades (see
   // vertical_moonshot_scanner.py's dashboard_snapshot()). Same fail-open
   // convention as iv_edge/MrBullish above.
+  // 2026-09-14: full per-trade table moved to moonshot.html (per explicit
+  // request, "moonshot paper trade is getting big.. create a tab that
+  // lands to a different page") -- this now just renders a one-line
+  // open/closed + $ summary so the main dashboard stays compact.
   (function(){
-    const el = $('moonshottable');
+    const el = $('moonshotsummary');
     if (!el) return;
-    const tb = el.querySelector('tbody');
     const trades = (d.moonshot && d.moonshot.trades) || [];
-    if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="13" class="empty">No Moonshot trades yet</td></tr>';
-      return;
-    }
-    tb.innerHTML = trades.map(t => {
-      const pnl = t.realized_pnl;
-      const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
-      const pnlTxt = pnl == null ? '—' : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$');
-      const statusTxt = t.status === 'open' ? 'open' : 'closed';
-      const statusCls = t.status === 'open' ? 'amber' : '';
-      const structure = `${t.long_strike}/${t.short_strike}${t.direction === 'call' ? 'C' : 'P'}`;
-      // 2026-09-11: entry_debit is stored as raw per-contract premium, not
-      // the real $100-multiplied dollar amount realized_pnl already uses --
-      // x100 here too, same fix already applied to the SPX multi-structure
-      // and IV Crush tables.
-      const debitTxt = t.entry_debit != null ? money(t.entry_debit * 100) : '—';
-      // 2026-09-11 (per explicit request, "add it to moonshot too"): same
-      // entry_pop (permanent snapshot) vs. current_pop (live, recomputed
-      // by refresh_current_pop() each real scan cycle off today's real
-      // spot/sigma/remaining DTE) split just added to IV Crush.
-      const currentPopTxt = t.current_pop != null ? (t.current_pop * 100).toFixed(0) + '%' : '—';
-      // 2026-09-10 (per explicit request, "wiring it might really be the
-      // edge"): real options-tape snapshot captured AT ENTRY (see
-      // vertical_moonshot_scanner.py's log_paper_entries()). Still just a
-      // real premium/tag proxy -- cannot say hedge vs. wall vs. a
-      // pre-planned squeeze, shown as a tooltip caveat rather than repeated
-      // in every cell.
-      const smLeanCls = t.sm_lean === 'bullish' ? 'green' : t.sm_lean === 'bearish' ? 'red' : '';
-      const smTxt = t.sm_trade_count ? `<span class="${smLeanCls}">${t.sm_lean || 'mixed'}</span>` +
-        ` (${t.sm_trade_count} trades, $${(t.sm_total_premium || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} prem` +
-        (t.sm_sweep_count ? `, ${t.sm_sweep_count} sweep` : '') +
-        (t.sm_block_count ? `, ${t.sm_block_count} block` : '') + ')' : '—';
-      // 2026-09-12 (per explicit request, "add Unrealized P&L to moonshot in
-      // dashboard"): last_unrealized_pnl is cached by mark_open_positions()
-      // each real scan cycle (see vertical_moonshot_scanner.py), already in
-      // real dollars (no x100 needed) -- same convention as IV Crush's
-      // Unrealized P&L column above.
-      const upnl = t.last_unrealized_pnl;
-      const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
-      const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
-      return `<tr>
-        <td>${t.ticker}</td>
-        <td class="${statusCls}">${statusTxt}</td>
-        <td>${structure}</td>
-        <td>${t.entry_date || '—'}</td>
-        <td>${t.expiry || '—'}</td>
-        <td>${t.dte_at_entry ?? '—'}</td>
-        <td>${debitTxt}</td>
-        <td>${t.payout_multiple != null ? t.payout_multiple + 'x' : '—'}</td>
-        <td>${t.entry_pop != null ? (t.entry_pop * 100).toFixed(0) + '%' : '—'}</td>
-        <td>${currentPopTxt}</td>
-        <td style="font-size:11px" title="Real premium/tag proxy -- cannot distinguish a hedge, a market-maker wall, or a pre-planned squeeze setup">${smTxt}</td>
-        <td class="${upnlCls}">${upnlTxt}</td>
-        <td class="${pnlCls}">${pnlTxt}</td>
-      </tr>`;
-    }).join('');
+    if (!trades.length) { el.textContent = 'No Moonshot trades yet'; return; }
+    const open = trades.filter(t => t.status === 'open').length;
+    const closed = trades.length - open;
+    const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
+    const unrealized = trades.reduce((s, t) => s + (t.last_unrealized_pnl || 0), 0);
+    const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
+    const uCls = unrealized > 0 ? 'green' : unrealized < 0 ? 'red' : '';
+    el.innerHTML = `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
   })();
 
   // 2026-09-10: IV Crush per-ticker table -- d.ivcrush.trades (see
   // ivcrush_paper.py's dashboard_snapshot()). Same fail-open convention
   // as every other strategy table above.
+  // 2026-09-14: full per-trade table moved to ivcrush.html (per explicit
+  // request, alongside Moonshot/iv_edge) -- this now just renders a
+  // one-line open/closed + $ summary so the main dashboard stays compact.
   (function(){
-    const el = $('ivcrushtable');
+    const el = $('ivcrushsummary');
     if (!el) return;
-    const tb = el.querySelector('tbody');
     const trades = (d.ivcrush && d.ivcrush.trades) || [];
-    if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="12" class="empty">No IV Crush trades yet</td></tr>';
-      return;
-    }
-    tb.innerHTML = trades.map(t => {
-      const pnl = t.realized_pnl;
-      const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
-      const pnlPct = t.realized_pnl_pct_of_debit;
-      const pnlTxt = pnl == null ? '—'
-        : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$') + (pnlPct != null ? ` (${pnlPct}%)` : '');
-      const statusTxt = t.status === 'open' ? 'open' : 'closed';
-      const statusCls = t.status === 'open' ? 'amber' : '';
-      const verdictCls = t.verdict === 'Recommended' ? 'green' : t.verdict === 'Consider' ? 'amber' : '';
-      // 2026-09-11 (per explicit request, "check the reverse trade .. just
-      // record and see"): variant distinguishes the original long calendar
-      // (sell near/buy far) from its mirror-image reverse (buy near/sell
-      // far) -- same real candidate, genuinely separate paper position.
-      const isReverse = t.variant === 'reverse';
-      const structure = isReverse
-        ? `${t.strike}C buy ${t.short_expiry}/sell ${t.long_expiry}`
-        : `${t.strike}C sell ${t.short_expiry}/buy ${t.long_expiry}`;
-      const variantCls = isReverse ? 'amber' : '';
-      // 2026-09-11: entry_debit is stored as raw per-contract premium (like
-      // spx_multistrat_paper.py's entry_credit_debit was), not the real
-      // $100-multiplied dollar amount realized_pnl already uses -- x100
-      // here too, same fix as the SPX multi-structure table got 2026-09-10.
-      // Reverse rows can be negative (a net credit received to open) --
-      // label credit/debit explicitly rather than just showing a bare
-      // negative dollar figure.
-      const rawDebit = t.entry_debit;
-      const debitTxt = rawDebit == null ? '—'
-        : (rawDebit >= 0 ? 'debit ' : 'credit ') + money(Math.abs(rawDebit) * 100);
-      // 2026-09-11 (per explicit request, "add ... POP and Unrealized
-      // P&L"): entry_pop is a real Black-Scholes probability computed at
-      // entry (permanent snapshot, never touched again -- same no-backfill
-      // policy used everywhere else in this codebase). current_pop is a
-      // DIFFERENT, live view -- recomputed by mark_open_positions() each
-      // real scan cycle using today's real spot/IV30/remaining DTE, so it
-      // moves day to day as the position ages (added 2026-09-11 per
-      // "why can't we get the current POP for those positions"since
-      // backfilling entry_pop itself would misrepresent history, but a
-      // live re-derivation has no such problem). last_unrealized_pnl is
-      // cached the same way, already in real dollars, no x100 needed.
-      const entryPopTxt = t.pop != null ? (t.pop * 100).toFixed(1) + '%' : '—';
-      const currentPopTxt = t.current_pop != null ? (t.current_pop * 100).toFixed(1) + '%' : '—';
-      const upnl = t.last_unrealized_pnl;
-      const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
-      const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
-      return `<tr>
-        <td>${t.ticker}</td>
-        <td class="${variantCls}">${isReverse ? 'reverse' : 'calendar'}</td>
-        <td class="${statusCls}">${statusTxt}</td>
-        <td class="${verdictCls}">${t.verdict || '—'}</td>
-        <td>${structure}</td>
-        <td>${t.report_date || '—'} (${t.session || '—'})</td>
-        <td>${t.entry_date || '—'}</td>
-        <td>${debitTxt}</td>
-        <td>${entryPopTxt}</td>
-        <td>${currentPopTxt}</td>
-        <td class="${upnlCls}">${upnlTxt}</td>
-        <td class="${pnlCls}">${pnlTxt}</td>
-      </tr>`;
-    }).join('');
+    if (!trades.length) { el.textContent = 'No IV Crush trades yet'; return; }
+    const open = trades.filter(t => t.status === 'open').length;
+    const closed = trades.length - open;
+    const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
+    const unrealized = trades.reduce((s, t) => s + (t.last_unrealized_pnl || 0), 0);
+    const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
+    const uCls = unrealized > 0 ? 'green' : unrealized < 0 ? 'red' : '';
+    el.innerHTML = `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
   })();
 
   // 2026-09-10: SPX multi-structure per-trade table -- d.spxmulti.trades
