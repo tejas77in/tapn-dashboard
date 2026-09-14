@@ -72,9 +72,10 @@
   <tbody></tbody>
 </table>
 
-<h2>Smart Money Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(bull call debit spread, auto-fired when composite score &ge; threshold -- delta-targeted strikes ~0.35/0.15, ~30-45 DTE -- research track, no real capital)</span></h2>
+<h2>Smart Money Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(call debit spread for bullish signals / put debit spread for bearish -- queued after the daily scan, entered live during market hours, delta-targeted strikes ~0.35/0.15, ~30-45 DTE, held to expiry -- research track, no real capital)</span></h2>
+<div id="directionsummary" style="display:flex;gap:24px;margin-bottom:12px;font-size:12px;color:var(--dim)"></div>
 <table id="smtable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Composite</th><th>Sources</th><th>Debit</th><th>Max Risk</th><th>Max Profit</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
+  <thead><tr><th>Ticker</th><th>Direction</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Composite</th><th>Debit</th><th>Max Risk</th><th>Max Profit</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -128,6 +129,21 @@
     }).join('');
   })();
 
+  // Direction accuracy summary -- d.smart_money.by_direction (bullish vs
+  // bearish win-rate, per explicit request "see accuracy of buying and selling")
+  (function(){
+    const el = $('directionsummary');
+    if (!el) return;
+    const bd = (d.smart_money && d.smart_money.by_direction) || {};
+    const line = (label, cls, s) => {
+      if (!s || s.closed === 0) return `<div><b class="${cls}">${label}</b>: no closed trades yet</div>`;
+      const pnlCls = s.total_realized_pnl > 0 ? 'green' : s.total_realized_pnl < 0 ? 'red' : '';
+      return `<div><b class="${cls}">${label}</b>: ${s.closed} closed, ${s.win_rate_pct}% win rate, ` +
+             `<span class="${pnlCls}">${money(s.total_realized_pnl)}</span> total realized</div>`;
+    };
+    el.innerHTML = line('Bullish', 'green', bd.bullish) + line('Bearish', 'red', bd.bearish);
+  })();
+
   // Paper trades table -- d.smart_money.trades (smart_money_paper.py dashboard_snapshot())
   (function(){
     const el = $('smtable');
@@ -135,7 +151,7 @@
     const tb = el.querySelector('tbody');
     const trades = (d.smart_money && d.smart_money.trades) || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="13" class="empty">No Smart Money paper trades yet -- fires automatically when a ticker\\'s composite score crosses the trade threshold</td></tr>';
+      tb.innerHTML = '<tr><td colspan="13" class="empty">No Smart Money paper trades yet -- queued daily after the scan, entered live during market hours once the composite score crosses the trade threshold</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
@@ -147,16 +163,19 @@
       const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
       const statusTxt = t.status === 'open' ? 'open' : 'closed';
       const statusCls = t.status === 'open' ? 'amber' : '';
-      const structure = `${num(t.long_strike,0)}/${num(t.short_strike,0)}C`;
+      const isBullish = (t.direction || 'bullish') === 'bullish';
+      const dirCls = isBullish ? 'green' : 'red';
+      const optLetter = isBullish ? 'C' : 'P';
+      const structure = `${num(t.long_strike,0)}/${num(t.short_strike,0)}${optLetter}`;
       return `<tr>
         <td><b>${t.ticker}</b></td>
+        <td class="${dirCls}">${t.direction || 'bullish'}</td>
         <td class="${statusCls}">${statusTxt}</td>
         <td>${structure}</td>
         <td>${t.entry_date || '—'}</td>
         <td>${t.expiry || '—'}</td>
         <td>${t.dte_at_entry ?? '—'}</td>
         <td>${num(t.composite_score,1)}</td>
-        <td style="font-size:11px;color:var(--dim)">${t.active_sources || '—'}</td>
         <td>${t.entry_debit != null ? money(t.entry_debit * 100) : '—'}</td>
         <td>${t.max_risk != null ? money(t.max_risk) : '—'}</td>
         <td>${t.max_profit != null ? money(t.max_profit) : '—'}</td>
