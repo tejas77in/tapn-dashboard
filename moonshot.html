@@ -73,6 +73,17 @@
   <a href="leap_conviction.html">LEAP Conviction</a>
 </div>
 
+<!-- 2026-09-10: Moonshot (far-OTM low-IV vertical, 90-365 DTE, paper-only
+     research track) per-ticker table -- added per "I dont see the trades
+     on dashboard": this strategy's paper trades were logging fine to
+     moonshot_trades.db the whole time, write_dashboard() just never
+     carried them into dashboard_data.js until now. d.moonshot.trades
+     (see vertical_moonshot_scanner.py's dashboard_snapshot()). Still
+     100% paper -- no real capital, shown here purely for visibility,
+     same convention as the iv_edge table. Full table moved here from the
+     main dashboard on 2026-09-14. 2026-09-15: heading moved here too --
+     main dashboard is reserved for live/real-money trading details only,
+     per explicit request. -->
 <h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital)</span></h2>
 <table id="moonshottable">
   <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Payout</th><th>Entry POP</th><th>Current POP</th><th>Tape at Entry</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>

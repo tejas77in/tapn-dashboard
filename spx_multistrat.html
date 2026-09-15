@@ -65,6 +65,15 @@
   <a href="leap_conviction.html">LEAP Conviction</a>
 </div>
 
+<!-- 2026-09-10: SPX multi-structure (short straddle/strangle, butterfly,
+     broken-wing butterfly, calendar) paper-only research track table --
+     built while MrSPX's own live Iron Condor is paused (STOPSPX).
+     d.spxmulti.trades (see spx_multistrat_paper.py's dashboard_snapshot()).
+     100% paper -- no real capital. Moved to its own page 2026-09-15 (per
+     explicit request, "move SPX multi structure paper trade to a new
+     page like you did for Smart money") -- this comment carries the full
+     history/rationale over from dashboard.html, which now only shows a
+     one-line summary + link back here. -->
 <h2>SPX Multi-Structure Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(short straddle/strangle, iron fly/condor, butterfly, broken-wing butterfly, long straddle/strangle, calendar, put credit spread -- research track, no real capital. Exits early at 50% of max profit or 30% stop loss (3x credit for the 2 undefined-risk structures), otherwise held to expiry.)</span></h2>
 <table id="spxmultitable">
   <thead><tr><th>Structure</th><th>Legs</th><th>Status</th><th>Expiry</th><th>Far Expiry</th><th>DTE</th><th>Entry Credit/Debit</th><th>Max Risk</th><th>Max Profit</th><th>Margin Used</th><th>POP</th><th>Unrealized P&amp;L</th><th>Settle Spot</th><th>Realized P&amp;L</th><th>Exit Reason</th></tr></thead>

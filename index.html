@@ -359,51 +359,19 @@
 
 <!-- 2026-09-04: Closed Positions table removed per explicit request ("Remove the closed position table from dashboard") -- was #closedtable, the unified real-money MrW/MrS/MrM closed-trade log fed by d.closed_positions (bot.py write_dashboard()). Realized P&L per position is still visible via the Portfolio Risk Profile / Slack close alerts; this only removed the standalone historical table. -->
 
-<!-- 2026-09-01: iv_edge (deep-ITM call debit vertical, paper-only research
-     track) per-ticker table -- added per explicit request after the
-     MSTR/DELL "why does the dashboard show them closed" investigation
-     surfaced that this strategy's open/closed status wasn't visible
-     anywhere on the dashboard at all, only inside
-     iv_edge_vertical_trades.db. d.iv_edge.trades (see
-     iv_edge_vertical_test.py's dashboard_snapshot()). Still 100% paper --
-     no real capital, shown here purely for visibility. -->
-<h2>iv_edge Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(deep-ITM call debit verticals -- research track, no real capital) -- <a href="iv_edge.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
+<!-- 2026-09-15: Paper-bot sections reduced to summary-only rows, no
+     heading -- per explicit request ("I only want the live trading
+     details.. all Paper bots should have their own page and summary").
+     Each bot's full table + historical rationale comment now lives
+     solely on its own page (iv_edge.html/moonshot.html/ivcrush.html/
+     spx_multistrat.html/leap_conviction.html); the bot name + link is
+     folded into the summary line itself via JS below instead of a
+     separate <h2>. -->
 <div id="ivedgesummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
-
-<!-- 2026-09-10: Moonshot (far-OTM low-IV vertical, 90-365 DTE, paper-only
-     research track) per-ticker table -- added per "I dont see the trades
-     on dashboard": this strategy's paper trades were logging fine to
-     moonshot_trades.db the whole time, write_dashboard() just never
-     carried them into dashboard_data.js until now. d.moonshot.trades
-     (see vertical_moonshot_scanner.py's dashboard_snapshot()). Still
-     100% paper -- no real capital, shown here purely for visibility,
-     same convention as the iv_edge table above. -->
-<h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital) -- <a href="moonshot.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
 <div id="moonshotsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
-
-<!-- 2026-09-10: IV Crush (earnings calendar spread, paper-only research
-     track) per-ticker table -- new strategy, added to the dashboard from
-     day one (unlike Moonshot above, which was retrofitted after the gap
-     was found). d.ivcrush.trades (see ivcrush_paper.py's
-     dashboard_snapshot()). 100% paper -- no real capital. -->
-<h2>IV Crush Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(earnings calendar spread, slope/volume/IV-RV gated -- research track, no real capital) -- <a href="ivcrush.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
 <div id="ivcrushsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
-
-<!-- 2026-09-15: SPX multi-structure full per-trade table moved to its own
-     page (spx_multistrat.html), same relocation pattern as moonshot/
-     iv_edge/ivcrush/smart_money before it -- per explicit request, "move
-     SPX multi structure paper trade to a new page like you did for Smart
-     money". -->
-<h2>SPX Multi-Structure Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(short straddle/strangle, butterfly, broken-wing butterfly, calendar -- research track, no real capital) -- <a href="spx_multistrat.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
-
-<!-- 2026-09-11: LEAP Conviction scanner (real institutional intermarket-
-     sweep LEAP flow, 250-500 DTE, via UW option_trades()) paper-only
-     research track table -- detects a real sweep someone else already
-     made and paper-buys the same contract, scored on insider/political/
-     dark-pool/IV-rank confluence. d.leap.trades (see
-     leap_conviction_paper.py's dashboard_snapshot()). 100% paper -- no
-     real capital. -->
-<h2>LEAP Conviction Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(real institutional intermarket-sweep LEAP flow, 250-500 DTE, insider/political/dark-pool scored -- research track, no real capital) -- <a href="leap_conviction.html" style="color:var(--blue)">full table &rarr;</a></span></h2>
+<div id="spxmultisummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
+<div id="leapsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 
 <!-- 2026-08-04: Portfolio Risk Profile -- per-open-position red/yellow/
      green health check, per request ("add a portfolio risk profile below
@@ -642,13 +610,14 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   (function(){
     const el = $('ivedgesummary');
     if (!el) return;
+    const label = '<b>iv_edge</b> <a href="iv_edge.html" style="color:var(--blue)">full table &rarr;</a> &middot; ';
     const trades = (d.iv_edge && d.iv_edge.trades) || [];
-    if (!trades.length) { el.textContent = 'No iv_edge trades yet'; return; }
+    if (!trades.length) { el.innerHTML = label + 'No iv_edge trades yet'; return; }
     const open = trades.filter(t => t.status === 'open').length;
     const closed = trades.length - open;
     const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
     const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
-    el.innerHTML = `${trades.length} trades (${open} open, ${closed} closed) &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
+    el.innerHTML = label + `${trades.length} trades (${open} open, ${closed} closed) &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
   })();
 
   // 2026-09-10: Moonshot per-ticker table -- d.moonshot.trades (see
@@ -661,15 +630,16 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   (function(){
     const el = $('moonshotsummary');
     if (!el) return;
+    const label = '<b>Moonshot</b> <a href="moonshot.html" style="color:var(--blue)">full table &rarr;</a> &middot; ';
     const trades = (d.moonshot && d.moonshot.trades) || [];
-    if (!trades.length) { el.textContent = 'No Moonshot trades yet'; return; }
+    if (!trades.length) { el.innerHTML = label + 'No Moonshot trades yet'; return; }
     const open = trades.filter(t => t.status === 'open').length;
     const closed = trades.length - open;
     const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
     const unrealized = trades.reduce((s, t) => s + (t.last_unrealized_pnl || 0), 0);
     const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
     const uCls = unrealized > 0 ? 'green' : unrealized < 0 ? 'red' : '';
-    el.innerHTML = `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
+    el.innerHTML = label + `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
   })();
 
   // 2026-09-10: IV Crush per-ticker table -- d.ivcrush.trades (see
@@ -681,15 +651,53 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   (function(){
     const el = $('ivcrushsummary');
     if (!el) return;
+    const label = '<b>IV Crush</b> <a href="ivcrush.html" style="color:var(--blue)">full table &rarr;</a> &middot; ';
     const trades = (d.ivcrush && d.ivcrush.trades) || [];
-    if (!trades.length) { el.textContent = 'No IV Crush trades yet'; return; }
+    if (!trades.length) { el.innerHTML = label + 'No IV Crush trades yet'; return; }
     const open = trades.filter(t => t.status === 'open').length;
     const closed = trades.length - open;
     const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
     const unrealized = trades.reduce((s, t) => s + (t.last_unrealized_pnl || 0), 0);
     const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
     const uCls = unrealized > 0 ? 'green' : unrealized < 0 ? 'red' : '';
-    el.innerHTML = `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
+    el.innerHTML = label + `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
+  })();
+
+  // 2026-09-15: SPX Multi-Structure summary -- d.spxmulti.trades (see
+  // spx_multistrat_paper.py's dashboard_snapshot()). Same compact
+  // one-line open/closed + $ summary convention as iv_edge/moonshot/
+  // ivcrush above, now that the full table lives on its own page.
+  (function(){
+    const el = $('spxmultisummary');
+    if (!el) return;
+    const label = '<b>SPX Multi-Structure</b> <a href="spx_multistrat.html" style="color:var(--blue)">full table &rarr;</a> &middot; ';
+    const trades = (d.spxmulti && d.spxmulti.trades) || [];
+    if (!trades.length) { el.innerHTML = label + 'No SPX multi-structure trades yet'; return; }
+    const open = trades.filter(t => t.status === 'open').length;
+    const closed = trades.length - open;
+    const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
+    const unrealized = trades.reduce((s, t) => s + (t.last_unrealized_pnl || 0), 0);
+    const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
+    const uCls = unrealized > 0 ? 'green' : unrealized < 0 ? 'red' : '';
+    el.innerHTML = label + `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
+  })();
+
+  // 2026-09-15: LEAP Conviction summary -- d.leap.trades (see
+  // leap_conviction_paper.py's dashboard_snapshot()). Same compact
+  // one-line summary convention as above.
+  (function(){
+    const el = $('leapsummary');
+    if (!el) return;
+    const label = '<b>LEAP Conviction</b> <a href="leap_conviction.html" style="color:var(--blue)">full table &rarr;</a> &middot; ';
+    const trades = (d.leap && d.leap.trades) || [];
+    if (!trades.length) { el.innerHTML = label + 'No LEAP Conviction trades yet'; return; }
+    const open = trades.filter(t => t.status === 'open').length;
+    const closed = trades.length - open;
+    const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
+    const unrealized = trades.reduce((s, t) => s + (t.last_unrealized_pnl || 0), 0);
+    const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
+    const uCls = unrealized > 0 ? 'green' : unrealized < 0 ? 'red' : '';
+    el.innerHTML = label + `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
   })();
 
   // 2026-09-04: Closed Positions block removed per explicit request --
