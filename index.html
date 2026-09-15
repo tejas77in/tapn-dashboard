@@ -359,20 +359,6 @@
 
 <!-- 2026-09-04: Closed Positions table removed per explicit request ("Remove the closed position table from dashboard") -- was #closedtable, the unified real-money MrW/MrS/MrM closed-trade log fed by d.closed_positions (bot.py write_dashboard()). Realized P&L per position is still visible via the Portfolio Risk Profile / Slack close alerts; this only removed the standalone historical table. -->
 
-<!-- 2026-09-15: Paper-bot sections reduced to summary-only rows, no
-     heading -- per explicit request ("I only want the live trading
-     details.. all Paper bots should have their own page and summary").
-     Each bot's full table + historical rationale comment now lives
-     solely on its own page (iv_edge.html/moonshot.html/ivcrush.html/
-     spx_multistrat.html/leap_conviction.html); the bot name + link is
-     folded into the summary line itself via JS below instead of a
-     separate <h2>. -->
-<div id="ivedgesummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
-<div id="moonshotsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
-<div id="ivcrushsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
-<div id="spxmultisummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
-<div id="leapsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
-
 <!-- 2026-08-04: Portfolio Risk Profile -- per-open-position red/yellow/
      green health check, per request ("add a portfolio risk profile below
      closed position.. is it under water, or is there still scope to
@@ -388,6 +374,25 @@
 <div style="color:var(--dim);font-size:11px;margin:-4px 0 12px" id="mwriskcaveat">
   Gamma Risk column is alert-only -- informational, does not affect the profit target or pre-earnings close. Blank = not yet computed for this position.
 </div>
+
+<!-- 2026-09-15: Paper-bot sections reduced to summary-only rows, no
+     heading -- per explicit request ("I only want the live trading
+     details.. all Paper bots should have their own page and summary").
+     Each bot's full table + historical rationale comment now lives
+     solely on its own page (iv_edge.html/moonshot.html/ivcrush.html/
+     spx_multistrat.html/leap_conviction.html); the bot name + link is
+     folded into the summary line itself via JS below instead of a
+     separate <h2>. Moved to the bottom of the page on 2026-09-15 per
+     follow-up request ("This whole block is still on dashboard page..
+     if you cannot remove it move it to bottom of the page") -- kept
+     rather than removed outright since the numbers/link are still
+     useful for a quick glance, just out of the way of the live-trading
+     content above. -->
+<div id="ivedgesummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
+<div id="moonshotsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
+<div id="ivcrushsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
+<div id="spxmultisummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
+<div id="leapsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 
 <script src="dashboard_data.js"></script>
 <script>
