@@ -77,6 +77,71 @@
      its own page (moonshot/smart_money/spx_multistrat/leap_conviction). -->
 <h2>SPX Live <span style="font-weight:400;color:var(--dim);font-size:11px">(real-money iron condor via Tastytrade -- spx_forward_test.py)</span></h2>
 
+<!-- 2026-09-19: summary strip (Total P&L / Total Fees / Win Rate / Trades)
+     scoped strictly to origin=='MrS' from d.closed_positions -- same
+     authoritative source as the by-structure/trades tables below, per
+     explicit request ("add a summary like total P&L, total Fees ...
+     only related to SPX like you had earlier"). -->
+<div id="spxsummarystrip" class="cards" style="margin-bottom:14px"></div>
+
+<!-- 2026-09-19: "configured structures" reference card, per explicit
+     request ("add all structure that are configured to take trade").
+     Static (not data-driven) -- lists what spx_forward_test.py's
+     open_new_position() actually compares by POP and can select live,
+     per its own 2026-09-14/2026-09-17 dispatch logic: Phase 4 Iron
+     Condor always competes, plus 6 of spx_multistrat_paper.py's 8
+     BUILDERS (reused directly, not reimplemented) -- calendar is built
+     as a candidate but structurally can never win (build_calendar()
+     never computes a POP, so it's excluded from the max-POP comparison
+     by construction); long_straddle/long_strangle are explicitly
+     excluded from live selection (2026-09-17, both were 0-for-4 on
+     paper, every one stopped out at -30% before expiry) but still
+     tracked on paper via spx_multistrat_paper.py itself for research.
+     Update this list by hand if open_new_position()'s dispatch logic
+     changes -- it is not read from any live config/data source. -->
+<div class="card" style="margin-bottom:14px">
+  <div class="label">Configured Structures (live-eligible, highest-POP wins)</div>
+  <div style="margin-top:8px;font-size:13px;line-height:1.7">
+    <b>Live-tradeable (7):</b> Phase 4 Iron Condor (original engine) &middot;
+    Iron Fly &middot; Iron Condor (multistrat variant) &middot; Butterfly &middot;
+    Broken Wing Fly &middot; Put Credit Spread (MR) &middot; Calendar<sup>*</sup><br>
+    <span style="color:var(--dim);font-size:11px">*Calendar is built as a candidate every cycle but has no comparable POP by design, so it can never win the max-POP comparison -- included in code, never actually selected in practice.</span><br><br>
+    <b>Paper-only, excluded from live (2):</b> Long Straddle &middot; Long Strangle
+    <span style="color:var(--dim);font-size:11px">(explicitly excluded 2026-09-17 -- both were 0-for-4 on paper, every trade stopped out at -30% before expiry; still tracked on paper via spx_multistrat_paper.py)</span>
+  </div>
+</div>
+
+<!-- 2026-09-19: by-structure summary + trades table switched from
+     d.spx.closed (spx_forward_test.py's own tracking, which consolidates
+     a rolled position into one logical trade per chain) to
+     d.closed_positions filtered to origin=='MrS' -- per explicit request,
+     so this page always agrees with the main dashboard's authoritative
+     Win Rate (MrS) tile, which reads the same source. d.closed_positions
+     comes from bot.py's _build_closed_positions_v8(), built from real
+     Tastytrade transaction history at per-leg-chain granularity: a roll
+     is NOT consolidated, each closed order/leg-group is its own row, so
+     a roll sequence now shows as several rows here instead of one (see
+     the Trades table subtitle below). closed_positions rows have no
+     `structure` field, so the by-structure table groups by leg_count
+     instead -- 4-leg = iron condor, 2-leg = vertical/roll remnant, 0-leg
+     = orphaned chain fragment (a closed leg group with no matching open
+     leg group in the transaction history) -- which is an honest
+     reflection of what this granular, non-consolidated ledger actually
+     contains, given SPX has otherwise only ever traded
+     "phase4_iron_condor" in practice. -->
+<h2>SPX Live by Structure <span style="font-weight:400;color:var(--dim);font-size:11px">(grouped by leg count: 4-leg = iron condor, 2-leg = vertical/roll remnant, 0-leg = orphaned fragment)</span></h2>
+<table id="spxstructuretable">
+  <thead><tr><th>Structure</th><th>Open</th><th>Closed</th><th>Win Rate</th><th>Realized P&amp;L</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>SPX Live Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(real broker-transaction-level ledger -- rolls shown as separate closed chains, not consolidated into one logical position)</span></h2>
+<table id="spxtradestable">
+  <thead><tr><th>Structure</th><th>Opened</th><th>Closed</th><th>Expiry</th><th>P&amp;L</th><th>Fees</th><th>Origin</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+
 <!-- 2026-08-18: moved above Closed Positions (previously below Portfolio
      Risk Profile, above Closed Positions in creation order) per explicit
      request ("bring SPX forward above closed position but below month-end
@@ -211,6 +276,111 @@
     ? `${tr.closed_count} closed, ${tr.win_rate_pct ?? '—'}% win rate, total P&L ${
         (tr.total_pnl>=0?'+':'') + money(tr.total_pnl).replace('$-','-$')}`
     : 'no closed trades yet';
+
+  // 2026-09-19: SPX Live "by structure" summary + trades table, switched
+  // from spx.closed to d.closed_positions filtered to origin=='MrS' --
+  // the same broker-verified source the main dashboard's Win Rate (MrS)
+  // tile uses, so the two pages always agree. closed_positions rows have
+  // no `structure` field, so grouping uses leg_count instead: 4 = iron
+  // condor, 2 = vertical/roll remnant, 0 = orphaned chain fragment (see
+  // the header comment above). Rolls are NOT consolidated here -- each
+  // closed leg-group is its own row, unlike spx.closed's per-chain
+  // consolidation.
+  (function(){
+    const mrsClosed = (d.closed_positions || []).filter(c => c.origin === 'MrS');
+    const legLabel = n => n === 4 ? 'Iron Condor (4-leg)'
+      : n === 2 ? 'Vertical/Roll (2-leg)'
+      : n === 0 ? 'Orphaned Fragment (0-leg)'
+      : `${n}-leg`;
+
+    const byStruct = {};
+    const ensure = k => byStruct[k] || (byStruct[k] = {open:0, closed:0, wins:0, total_realized_pnl:0});
+    mrsClosed.forEach(c => {
+      const k = legLabel(c.leg_count);
+      const rec = ensure(k);
+      rec.closed += 1;
+      if (c.pnl != null) {
+        rec.total_realized_pnl += c.pnl;
+        if (c.pnl > 0) rec.wins += 1;
+      }
+    });
+    if (spx.open) {
+      // the live open position (when any) is always a 4-leg iron condor
+      // in practice -- fold it into that group's open-count.
+      ensure(legLabel(4)).open += 1;
+    }
+
+    // summary strip -- Total P&L / Total Fees / Win Rate / Trades, all
+    // scoped to mrsClosed (origin=='MrS'), same source as the tables below.
+    const stripEl = $('spxsummarystrip');
+    if (stripEl) {
+      const totalPnl = mrsClosed.reduce((s, c) => s + (c.pnl || 0), 0);
+      const totalFees = mrsClosed.reduce((s, c) => s + (c.fees || 0), 0);
+      // same methodology as bot.py's _origin_stats() (the main dashboard's
+      // Win Rate tile): wins/losses counted from pnl>0 / pnl<0, but the
+      // win-rate PERCENTAGE divides by the full row count (mrsClosed.length),
+      // not just the decisive (non-zero-pnl) rows -- so a breakeven trade
+      // quietly lowers the percentage without appearing in the W/L count,
+      // exactly matching "86.7% (13W/1L)" on the main dashboard.
+      const wins = mrsClosed.filter(c => c.pnl > 0).length;
+      const losses = mrsClosed.filter(c => c.pnl < 0).length;
+      const winRate = mrsClosed.length ? Math.round(wins / mrsClosed.length * 1000) / 10 : null;
+      const pnlCls = totalPnl > 0 ? 'green' : totalPnl < 0 ? 'red' : '';
+      stripEl.innerHTML = `
+        <div class="card"><div class="label">Total P&amp;L (MrS)</div><div class="value ${pnlCls}">${(totalPnl>=0?'+':'') + money(totalPnl).replace('$-','-$')}</div></div>
+        <div class="card"><div class="label">Total Fees (MrS)</div><div class="value" style="color:var(--dim)">${money(totalFees)}</div></div>
+        <div class="card"><div class="label">Win Rate (MrS)</div><div class="value">${winRate != null ? winRate + '%' : '—'} (${wins}W/${losses}L)</div></div>
+        <div class="card"><div class="label">Trades (MrS)</div><div class="value">${mrsClosed.length}</div></div>`;
+    }
+
+    const el = $('spxstructuretable');
+    if (el) {
+      const tb = el.querySelector('tbody');
+      const keys = Object.keys(byStruct);
+      if (!keys.length) {
+        tb.innerHTML = '<tr><td colspan="5" class="empty">No SPX Live (MrS) trades yet</td></tr>';
+      } else {
+        tb.innerHTML = keys.map(k => {
+          const rec = byStruct[k];
+          const denom = mrsClosed.filter(c => legLabel(c.leg_count) === k && c.pnl != null).length;
+          const winRate = denom > 0 ? Math.round(rec.wins / denom * 1000) / 10 : null;
+          const pnlCls = rec.total_realized_pnl > 0 ? 'green' : rec.total_realized_pnl < 0 ? 'red' : '';
+          return `<tr>
+            <td><b>${k}</b></td>
+            <td>${rec.open}</td>
+            <td>${rec.closed}</td>
+            <td>${winRate != null ? winRate + '%' : '—'}</td>
+            <td class="${pnlCls}">${money(rec.total_realized_pnl)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    const tEl = $('spxtradestable');
+    if (tEl) {
+      const tb = tEl.querySelector('tbody');
+      const rows = mrsClosed.slice().sort((a, b) => (b.closed || '').localeCompare(a.closed || ''));
+      if (!rows.length) {
+        tb.innerHTML = '<tr><td colspan="7" class="empty">No SPX Live (MrS) trades closed yet</td></tr>';
+      } else {
+        tb.innerHTML = rows.map(c => {
+          const pnl = c.pnl;
+          const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
+          const pnlStyle = pnl === 0 ? ' style="color:var(--dim)"' : '';
+          const pnlTxt = pnl == null ? '—' : (pnl > 0 ? '+' : '') + money(pnl).replace('$-', '-$');
+          return `<tr>
+            <td>${legLabel(c.leg_count)}</td>
+            <td>${c.opened || '—'}</td>
+            <td>${c.closed || '—'}</td>
+            <td>${c.expiry || '—'}</td>
+            <td class="${pnlCls}"${pnlStyle}>${pnlTxt}</td>
+            <td style="font-size:11px;color:var(--dim)">${c.fees != null ? money(c.fees) : '—'}</td>
+            <td style="font-size:11px;color:var(--dim)">${c.origin || '—'}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+  })();
 
   if (spx.open) {
     const p = spx.open;
