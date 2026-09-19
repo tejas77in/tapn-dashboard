@@ -88,7 +88,6 @@
 <div class="navtabs">
   <a href="index.html" class="active">Dashboard</a>
   <a href="moonshot.html">Moonshot</a>
-  <a href="iv_edge.html">IV Edge</a>
   <a href="smart_money.html">Smart Money</a>
   <a href="spx_multistrat.html">SPX Multi-Structure</a>
   <a href="leap_conviction.html">LEAP Conviction</a>
@@ -387,7 +386,6 @@
      rather than removed outright since the numbers/link are still
      useful for a quick glance, just out of the way of the live-trading
      content above. -->
-<div id="ivedgesummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 <div id="moonshotsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 <div id="spxmultisummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 <div id="leapsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
@@ -603,25 +601,7 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   // `badge` is still needed below for the Closed Positions Origin column.
   const badge = o => `<span class="origin-badge origin-${o||'MrM'}">${o||'MrM'}</span>`;
 
-  // 2026-09-01: iv_edge per-ticker table -- d.iv_edge.trades (see
-  // iv_edge_vertical_test.py's dashboard_snapshot()). Falls back to the
-  // empty-state row if the field is missing (older dashboard_data.js
-  // written before this table existed) rather than throwing.
-  // 2026-09-14: full per-trade table moved to iv_edge.html (per explicit
-  // request, alongside Moonshot/IV Crush) -- this now just renders a
-  // one-line open/closed + $ summary so the main dashboard stays compact.
-  (function(){
-    const el = $('ivedgesummary');
-    if (!el) return;
-    const label = '<b>iv_edge</b> <a href="iv_edge.html" style="color:var(--blue)">full table &rarr;</a> &middot; ';
-    const trades = (d.iv_edge && d.iv_edge.trades) || [];
-    if (!trades.length) { el.innerHTML = label + 'No iv_edge trades yet'; return; }
-    const open = trades.filter(t => t.status === 'open').length;
-    const closed = trades.length - open;
-    const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
-    const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
-    el.innerHTML = label + `${trades.length} trades (${open} open, ${closed} closed) &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
-  })();
+  // 2026-09-19: IV Edge summary block removed -- IV Edge deleted entirely.
 
   // 2026-09-10: Moonshot per-ticker table -- d.moonshot.trades (see
   // vertical_moonshot_scanner.py's dashboard_snapshot()). Same fail-open

@@ -51,7 +51,7 @@ TAPN_ROOT = HERE.parent if (HERE.parent / "dashboard.html").exists() else HERE
 PAGES = [
     ("dashboard.html", "index.html"),
     ("moonshot.html", "moonshot.html"),
-    ("iv_edge.html", "iv_edge.html"),
+    # 2026-09-19: iv_edge.html removed -- IV Edge deleted (thin/inconclusive, retired).
     # 2026-09-19: ivcrush.html removed -- IV Crush deleted (10.5% win rate,
     # negative signal). mrstonk.html will be added here once built.
     ("smart_money.html", "smart_money.html"),  # 2026-09-14: Smart Money tab
