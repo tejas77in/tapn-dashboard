@@ -26,7 +26,7 @@
      the "Dashboard" tab's href from dashboard.html -> index.html when
      publishing to Vercel (see that script's docstring) -- every OTHER
      link here keeps the same filename locally and published, so it works
-     unmodified in both places. -->
+     unmodified in both places. */
   .navtabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
   .navtabs a { padding:6px 14px; border-radius:6px; background:var(--card); border:1px solid var(--border);
     color:var(--text); text-decoration:none; font-size:13px; }
@@ -72,6 +72,7 @@
   <a href="leap_conviction.html" id="navleap">LEAP Conviction</a>
   <a href="mrstonk.html" id="navmrstonk">MRStonk</a>
 </div>
+<div id="moonshotsummarylocal" class="empty" style="text-align:left;padding:10px 14px;margin-top:12px">—</div>
 
 <!-- 2026-09-10: Moonshot (far-OTM low-IV vertical, 90-365 DTE, paper-only
      research track) per-ticker table -- added per "I dont see the trades
@@ -98,7 +99,22 @@
   const nav = document.getElementById('navmoonshot');
   if (nav) nav.className = 'active';
   if (!d) { $('stale').style.display='block'; $('stale').textContent='No data yet — start bot.py and this page will populate.'; return; }
+
   const money = v => (v==null||isNaN(v)) ? '—' : '$' + Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  (function(){
+    const el = $('moonshotsummarylocal');
+    if (!el) return;
+    const trades = (d.moonshot && d.moonshot.trades) || [];
+    if (!trades.length) { el.innerHTML = 'No Moonshot trades yet'; return; }
+    const open = trades.filter(t => t.status === 'open').length;
+    const closed = trades.length - open;
+    const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
+    const unrealized = trades.reduce((s, t) => s + (t.last_unrealized_pnl || 0), 0);
+    const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
+    const uCls = unrealized > 0 ? 'green' : unrealized < 0 ? 'red' : '';
+    el.innerHTML = `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
+  })();
   $('updated').textContent = d.updated || '—';
   $('mkt').textContent = d.market_open ? 'market OPEN' : 'market closed';
   try {
