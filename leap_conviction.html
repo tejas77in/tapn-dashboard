@@ -148,7 +148,7 @@
         <td>${t.expiry || '—'}</td>
         <td>${t.dte_at_entry ?? '—'}</td>
         <td>${t.entry_debit != null ? money(t.entry_debit * 100) : '—'}</td>
-        <td title="${t.conviction_notes || ''}">${t.conviction_score ?? '—'}/8</td>
+        <td title="${t.conviction_notes || ''}">${t.conviction_score ?? '—'}/9</td>
         <td>${t.entry_pop != null ? (t.entry_pop * 100).toFixed(1) + '%' : '—'}</td>
         <td>${t.current_pop != null ? (t.current_pop * 100).toFixed(1) + '%' : '—'}</td>
         <td class="${upnlCls}">${upnlTxt}</td>
