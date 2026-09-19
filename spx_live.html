@@ -288,15 +288,42 @@
   // consolidation.
   (function(){
     const mrsClosed = (d.closed_positions || []).filter(c => c.origin === 'MrS');
-    const legLabel = n => n === 4 ? 'Iron Condor (4-leg)'
-      : n === 2 ? 'Vertical/Roll (2-leg)'
-      : n === 0 ? 'Orphaned Fragment (0-leg)'
-      : `${n}-leg`;
+    // 2026-09-19 FIX (direct bug report -- "Iron Fly is not in scope for
+    // SPX live right now"): leg_count alone can't tell Iron Fly from Iron
+    // Condor -- both are 4-leg structures. The real distinguishing signal
+    // is whether the short call and short put sit at the SAME strike
+    // (Iron Fly, a short straddle plus protective wings) or at DIFFERENT,
+    // wider-apart strikes (a true Iron Condor). Confirmed against real
+    // data: the 2026-08-21 4-leg trade (+$571.12) has short call and short
+    // put both at 7680 -- an Iron Fly that was silently mislabeled "Iron
+    // Condor (4-leg)" under the old leg-count-only grouping.
+    const parseLeg = sym => {
+      const m = /\S+\s+\d{6}([CP])(\d{8})/.exec((sym || '').trim());
+      if (!m) return null;
+      return { kind: m[1], strike: parseInt(m[2], 10) / 1000 };
+    };
+    const legLabel = c => {
+      const n = c.leg_count;
+      if (n === 4) {
+        const legs = (c.legs || []).map(parseLeg).filter(Boolean);
+        const calls = legs.filter(l => l.kind === 'C').map(l => l.strike);
+        const puts = legs.filter(l => l.kind === 'P').map(l => l.strike);
+        if (calls.length === 2 && puts.length === 2) {
+          const shortCall = Math.min(...calls);
+          const shortPut = Math.max(...puts);
+          if (shortCall === shortPut) return 'Iron Fly (4-leg)';
+        }
+        return 'Iron Condor (4-leg)';
+      }
+      if (n === 2) return 'Vertical/Roll (2-leg)';
+      if (n === 0) return 'Orphaned Fragment (0-leg)';
+      return `${n}-leg`;
+    };
 
     const byStruct = {};
     const ensure = k => byStruct[k] || (byStruct[k] = {open:0, closed:0, wins:0, total_realized_pnl:0});
     mrsClosed.forEach(c => {
-      const k = legLabel(c.leg_count);
+      const k = legLabel(c);
       const rec = ensure(k);
       rec.closed += 1;
       if (c.pnl != null) {
@@ -307,7 +334,7 @@
     if (spx.open) {
       // the live open position (when any) is always a 4-leg iron condor
       // in practice -- fold it into that group's open-count.
-      ensure(legLabel(4)).open += 1;
+      ensure('Iron Condor (4-leg)').open += 1;  // no strike data on an open position snapshot to distinguish fly vs condor -- default assumption, same as before this fix
     }
 
     // summary strip -- Total P&L / Total Fees / Win Rate / Trades, all
@@ -342,7 +369,7 @@
       } else {
         tb.innerHTML = keys.map(k => {
           const rec = byStruct[k];
-          const denom = mrsClosed.filter(c => legLabel(c.leg_count) === k && c.pnl != null).length;
+          const denom = mrsClosed.filter(c => legLabel(c) === k && c.pnl != null).length;
           const winRate = denom > 0 ? Math.round(rec.wins / denom * 1000) / 10 : null;
           const pnlCls = rec.total_realized_pnl > 0 ? 'green' : rec.total_realized_pnl < 0 ? 'red' : '';
           return `<tr>
@@ -369,7 +396,7 @@
           const pnlStyle = pnl === 0 ? ' style="color:var(--dim)"' : '';
           const pnlTxt = pnl == null ? '—' : (pnl > 0 ? '+' : '') + money(pnl).replace('$-', '-$');
           return `<tr>
-            <td>${legLabel(c.leg_count)}</td>
+            <td>${legLabel(c)}</td>
             <td>${c.opened || '—'}</td>
             <td>${c.closed || '—'}</td>
             <td>${c.expiry || '—'}</td>
