@@ -50,6 +50,7 @@ TAPN_ROOT = HERE.parent if (HERE.parent / "dashboard.html").exists() else HERE
 # (source filename in the TAPN root, published filename in vercel-dashboard)
 PAGES = [
     ("dashboard.html", "index.html"),
+    ("spx_live.html", "spx_live.html"),  # 2026-09-19: SPX Live tab
     ("moonshot.html", "moonshot.html"),
     # 2026-09-19: iv_edge.html removed -- IV Edge deleted (thin/inconclusive, retired).
     # 2026-09-19: ivcrush.html removed -- IV Crush deleted (10.5% win rate,

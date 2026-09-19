@@ -87,10 +87,11 @@
 <div class="stale" id="stale">⚠ Data is stale — the bot may not be running. Check HEARTBEAT.txt / restart bot.py</div>
 <div class="navtabs">
   <a href="index.html" class="active">Dashboard</a>
-  <a href="moonshot.html">Moonshot</a>
-  <a href="smart_money.html">Smart Money</a>
-  <a href="spx_multistrat.html">SPX Multi-Structure</a>
-  <a href="leap_conviction.html">LEAP Conviction</a>
+  <a href="spx_live.html" id="navspxlive">SPX Live</a>
+  <a href="moonshot.html" id="navmoonshot">Moonshot</a>
+  <a href="smart_money.html" id="navsmartmoney">Smart Money</a>
+  <a href="spx_multistrat.html" id="navspxmulti">SPX Multi-Structure</a>
+  <a href="leap_conviction.html" id="navleap">LEAP Conviction</a>
 </div>
 
 <div class="cards">
@@ -237,113 +238,14 @@
   WILL happen -- an answer to "what would this specific move do to the account right now." <span id="stressnote"></span>
 </div>
 
-<!-- 2026-08-18: moved above Closed Positions (previously below Portfolio
-     Risk Profile, above Closed Positions in creation order) per explicit
-     request ("bring SPX forward above closed position but below month-end
-     account projections") -- section content/ids unchanged, only its
-     position in the page moved. -->
-<!-- 2026-08-17: SPX forward trader section -- per explicit request ("did
-     you update the dashboard too?" -> "yes"), added the same day the
-     strategy went LIVE on Tastytrade. d.spx (bot.py's write_dashboard() ->
-     spx_forward_test.dashboard_snapshot()) carries the open position (with
-     a live unrealized P&L, priced via the exact same functions
-     manage_open_position() uses to decide the real exit -- so this can
-     never disagree with what the bot itself is watching), the closed
-     trade history, and a track-record summary (win rate/total P&L). The
-     "LIVE"/"paper" pill on each row distinguishes real Tastytrade fills
-     from any pre-2026-08-17 paper rows or SPX_LIVE=0 runs. -->
-<!-- 2026-08-23: header + track-record line and the "no open position"
-     placeholder removed per explicit request ("remove this lines to free
-     up dashboard space") -- SPX's closed-trade P&L is already visible in
-     the unified Closed Positions table (MrS rows) and Win Rate (SPX)
-     tile. Open-position status/risk cards below are untouched -- they
-     only render when a real SPX position is open. -->
-<span id="spxtrackrecord" style="display:none"></span>
-<div class="cards" id="spxopencards" style="display:none">
-  <div class="card"><div class="label">Status</div><div class="value" id="spxstatus">—</div></div>
-  <div class="card"><div class="label">Structure</div><div class="value" id="spxstructure" style="font-size:15px">—</div></div>
-  <div class="card"><div class="label">DTE</div><div class="value" id="spxdte">—</div></div>
-  <div class="card"><div class="label">Unrealized P&amp;L</div><div class="value" id="spxunrealized">—</div></div>
-  <div class="card"><div class="label">Entry Credit</div><div class="value" id="spxentrycredit">—</div></div>
-  <div class="card"><div class="label">Target Exit Debit</div><div class="value" id="spxtarget">—</div></div>
-</div>
-<!-- 2026-08-17: gamma/VIX risk model -- ALERT-ONLY (see spx_greeks.py's
-     module docstring). d.spx.open.risk (bot.py's write_dashboard() ->
-     spx_forward_test.dashboard_snapshot()) -- same read a Slack alert
-     would be based on. Never affects the position's own management. -->
-<div class="cards" id="spxriskcards" style="display:none">
-  <div class="card"><div class="label">Gamma Risk</div><div class="value" id="spxgammatier">—</div></div>
-  <div class="card"><div class="label">Delta</div><div class="value" id="spxdelta">—</div></div>
-  <div class="card"><div class="label">Gamma</div><div class="value" id="spxgamma">—</div></div>
-  <div class="card"><div class="label">Theta/day</div><div class="value" id="spxtheta">—</div></div>
-  <div class="card"><div class="label">Vega (per 1pt IV move)</div><div class="value" id="spxvega">—</div><div style="font-size:10px;color:var(--dim)" id="spxvega5pt">—</div></div>
-  <div class="card"><div class="label">VIX</div><div class="value" id="spxvix">—</div></div>
-</div>
-<div id="spxriskcaveat" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 12px">
-  Alert-only -- informational, does not affect the 50% profit target or circuit breaker. Vega is driven by
-  SPX's own implied vol (not VIX directly, though VIX is a reasonable proxy for it moving) -- shown per 1
-  point that IV moves, with a 5-point reference alongside since a single VIX-style spike often moves that far.
-</div>
-<!-- 2026-08-17: rough unrealized P&L attribution, per explicit request
-     ("theta is already $218... why is the position in a loss of $135?").
-     d.spx.open.pnl_attribution (spx_forward_test.dashboard_snapshot()) --
-     a first-order estimate, NOT a precise decomposition: vega_pnl = vega x
-     (VIX now - VIX at entry), theta_pnl = today's theta figure (whole-
-     position, already $-scaled -- note this is the full daily RATE, not
-     partial-day-realized decay, since there's no clean way to isolate that
-     from one snapshot), and price/gamma/skew = whatever's left over
-     (unrealized P&L minus the other two) -- folds in the spot move AND any
-     bid/ask/skew noise a simple greek read can't cleanly separate, labeled
-     as such rather than claimed to be pure gamma. -->
-<div id="spxpnlattr" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 12px">
-  Rough P&amp;L breakdown (estimate, not precise): <span id="spxpnlattrtext">—</span>
-</div>
-<!-- 2026-08-17: dealer gamma / GEX wall -- ALERT-ONLY, per explicit
-     request ("add gamma / dealer positioning at entry and if that changed
-     should alert on slack and dashboard"). d.spx.open.gex_wall (bot.py's
-     write_dashboard() -> spx_forward_test.dashboard_snapshot()). Distinct
-     from the greeks cards above (your position) -- this is DEALER
-     positioning in the underlying.
-
-     spxgexwallline (always visible when a position is open): the CURRENT
-     live call/put wall reading every cycle, regardless of whether a
-     shift has been detected -- added same day as the shift banner below,
-     per follow-up request ("add an always-visible line") after trade #3
-     (opened before this feature existed, so it has no entry_call_wall/
-     entry_put_wall baseline) showed nothing at all since the shift
-     banner only fires on a DETECTED change, which is structurally
-     impossible without a baseline to compare against.
-
-     spxgexwallalert (only shown once a real shift IS detected): the
-     highlighted before/after banner -- unaffected by this addition, still
-     only appears when call_shifted/put_shifted is true (never for a
-     position with no baseline, like trade #3). -->
-<!-- 2026-08-17: short-strike proximity -- ALERT-ONLY, per explicit
-     request ("alert when spot nears a short strike") -- see
-     spx_forward_test.check_strike_proximity()'s module comment. The most
-     directly decision-relevant of the SPX risk signals: the point where
-     spot is close enough to a short strike that gamma risk genuinely
-     starts accelerating for real, worth a manual look. -->
-<div id="spxstrikeproxline" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 8px">
-  Distance to short strikes: <span id="spxstrikeproxtext">—</span>
-</div>
-<div id="spxstrikeproxalert" style="display:none;background:rgba(248,81,73,0.1);border:1px solid var(--red);border-radius:8px;padding:10px 14px;margin:-4px 0 12px;font-size:12px">
-  ⚠️ <b>Spot is close to a short strike</b> -- <span id="spxstrikeproxdetail"></span>
-</div>
-<div id="spxgexwallline" style="display:none;color:var(--dim);font-size:11px;margin:-4px 0 8px">
-  Dealer gamma walls: <span id="spxgexwalltext">—</span>
-</div>
-<div id="spxgexwallalert" style="display:none;background:rgba(255,159,10,0.1);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;margin:-4px 0 12px;font-size:12px">
-  🧲 <b>Dealer gamma wall shifted since entry</b> -- <span id="spxgexwalldetail"></span>
-</div>
-<span id="spxnoposition" style="display:none"></span>
-<!-- 2026-08-23: standalone SPX Closed Positions table removed per explicit
-     request ("remove the SPX forward trader table and just add the SPX
-     trade to closed trade as done by Mr SPX") -- SPX's real closed trades
-     now appear as MrS-tagged rows in the unified Closed Positions table
-     below instead (bot.py's write_dashboard(), the spx_snapshot['closed']
-     fold-in). Open-position status cards and risk analytics above are
-     untouched -- that's live monitoring, not duplicated anywhere else. -->
+<!-- 2026-09-19: SPX Live section moved to its own page (spx_live.html)
+     per explicit request, "clean up the dashboard and build a new tab for
+     spx live and move all data relevant to spx live in that tab" -- same
+     one-line summary + link convention as moonshot/smart_money/spx_multistrat/
+     leap_conviction before it. Full open-position cards, risk/greeks,
+     P&L attribution, gex wall, and strike-proximity alerts all live on
+     spx_live.html now, unchanged, still driven by the same d.spx data. -->
+<div id="spxlivesummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 
 <!-- 2026-08-03: Open Positions section was removed entirely per that
      day's request ("remove the open position.. I only need the closed
@@ -730,142 +632,31 @@ window.toggleMwGroup = function(groupKey, headerEl) {
   // journal.jsonl / trade_log.csv / history.db for later analysis, this
   // just stops rendering them here.
 
-  // 2026-08-17: SPX Forward Trader section -- d.spx (bot.py's
-  // write_dashboard() -> spx_forward_test.dashboard_snapshot()). Same
-  // fail-open convention as the rest of this page: a missing/partial d.spx
-  // renders as "no data yet" rather than throwing.
-  const spx = d.spx || {open: null, closed: [], track_record: {}};
-  const tr = spx.track_record || {};
-  $('spxtrackrecord').textContent = tr.closed_count
-    ? `${tr.closed_count} closed, ${tr.win_rate_pct ?? '—'}% win rate, total P&L ${
-        (tr.total_pnl>=0?'+':'') + money(tr.total_pnl).replace('$-','-$')}`
-    : 'no closed trades yet';
-
-  if (spx.open) {
+  // 2026-09-19: SPX Live summary -- d.spx (bot.py's write_dashboard() ->
+  // spx_forward_test.dashboard_snapshot()). Full detail moved to
+  // spx_live.html; this renders a compact one-line summary, same
+  // convention as the other relocated strategy sections.
+  (function(){
+    const el = $('spxlivesummary');
+    if (!el) return;
+    const label = '<b>SPX Live</b> <a href="spx_live.html" style="color:var(--blue)">full detail &rarr;</a> &middot; ';
+    const spx = d.spx || {open: null, track_record: {}};
+    const tr = spx.track_record || {};
+    const trTxt = tr.closed_count
+      ? `${tr.closed_count} closed, ${tr.win_rate_pct ?? '—'}% win rate, total P&L ${
+          (tr.total_pnl>=0?'+':'') + money(tr.total_pnl).replace('$-','-$')}`
+      : 'no closed trades yet';
+    if (!spx.open) {
+      el.innerHTML = label + `No open position &middot; ${trTxt}`;
+      return;
+    }
     const p = spx.open;
-    $('spxopencards').style.display = '';
-    $('spxnoposition').style.display = 'none';
     const liveTag = p.is_live ? '<span class="pill live">LIVE</span>' : '<span class="pill dry">paper</span>';
-    $('spxstatus').innerHTML = liveTag;
-    $('spxstructure').textContent = `${p.regime || '—'} -- C ${p.kc_s}/${p.kc_l}, P ${p.kp_s}/${p.kp_l} (exp ${p.expiry || '—'})`;
-    $('spxdte').textContent = p.dte_now ?? '—';
-    if (p.unrealized_pnl != null) {
-      const u = Number(p.unrealized_pnl);
-      $('spxunrealized').textContent = (u>=0?'+':'') + money(u).replace('$-','-$');
-      $('spxunrealized').className = 'value ' + (u>0?'green':u<0?'red':'');
-    } else {
-      $('spxunrealized').textContent = '— (quote unavailable)';
-      $('spxunrealized').className = 'value';
-    }
-    const qty = p.quantity || 1;
-    $('spxentrycredit').textContent = p.entry_credit_worst_case != null
-      ? money(p.entry_credit_worst_case * 100 * qty) + ` (${qty}x)` : '—';
-    $('spxtarget').textContent = p.profit_target_debit != null
-      ? '≤ ' + money(p.profit_target_debit * 100 * qty) : '—';
-
-    // 2026-08-17: gamma/VIX risk model -- ALERT-ONLY (p.risk, see
-    // spx_forward_test.spx_risk_snapshot()). tier can be null (quote/IV
-    // fetch hiccup that cycle) -- cards stay hidden rather than showing
-    // fabricated dashes for every field.
-    const risk = p.risk;
-    if (risk && risk.tier) {
-      $('spxriskcards').style.display = '';
-      $('spxriskcaveat').style.display = '';
-      const tierCls = risk.tier === 'high' ? 'red' : risk.tier === 'elevated' ? 'amber' : 'green';
-      $('spxgammatier').innerHTML = `<span class="${tierCls}">${risk.tier.toUpperCase()}</span>`;
-      $('spxgammatier').title = risk.note || '';
-      const g = risk.greeks || {};
-      $('spxdelta').textContent = g.delta ?? '—';
-      $('spxgamma').textContent = g.gamma ?? '—';
-      $('spxtheta').textContent = g.theta != null ? '$' + g.theta : '—';
-      $('spxvega').textContent = g.vega != null ? '$' + g.vega : '—';
-      $('spxvega5pt').textContent = g.vega != null ? `at 5pt move: ${g.vega>=0?'+':'-'}$${Math.abs(Math.round(g.vega*5)).toLocaleString()}` : '';
-      $('spxvix').textContent = risk.vix != null ? risk.vix.toFixed(2) : '—';
-    } else {
-      $('spxriskcards').style.display = 'none';
-      $('spxriskcaveat').style.display = 'none';
-    }
-
-    // 2026-08-17: rough unrealized P&L attribution (p.pnl_attribution, see
-    // spx_forward_test.dashboard_snapshot()). null when any input greek/
-    // VIX read was missing that cycle -- hidden rather than shown wrong.
-    const attr = p.pnl_attribution;
-    if (attr) {
-      const fmt = v => (v>=0?'+':'-') + '$' + Math.abs(Math.round(v)).toLocaleString();
-      $('spxpnlattrtext').textContent =
-        `theta ${fmt(attr.theta_pnl)} (full-day rate) + vega ${fmt(attr.vega_pnl)} ` +
-        `(VIX ${attr.vix_entry.toFixed(2)}→${attr.vix_now.toFixed(2)}) + price/gamma/skew ${fmt(attr.price_gamma_skew_pnl)} ` +
-        `= unrealized P&L`;
-      $('spxpnlattr').style.display = '';
-    } else {
-      $('spxpnlattr').style.display = 'none';
-    }
-
-    // 2026-08-17: short-strike proximity (p.strike_proximity, see
-    // spx_forward_test.check_strike_proximity()). Always-visible distance
-    // line, plus a highlighted banner when within
-    // config.SPX_STRIKE_PROXIMITY_PCT of either short strike.
-    const sp = p.strike_proximity;
-    if (sp && sp.spot != null) {
-      $('spxstrikeproxtext').textContent =
-        `call ${p.kc_s} (${sp.call_distance_pct != null ? sp.call_distance_pct + '%' : '—'} away), ` +
-        `put ${p.kp_s} (${sp.put_distance_pct != null ? sp.put_distance_pct + '%' : '—'} away) -- spot ${sp.spot}`;
-      $('spxstrikeproxline').style.display = '';
-    } else {
-      $('spxstrikeproxline').style.display = 'none';
-    }
-    if (sp && (sp.near_call || sp.near_put)) {
-      const parts = [];
-      if (sp.near_call) parts.push(`spot is only ${sp.call_distance_pct}% from your short call strike ${p.kc_s}`);
-      if (sp.near_put) parts.push(`spot is only ${sp.put_distance_pct}% from your short put strike ${p.kp_s}`);
-      $('spxstrikeproxdetail').textContent = parts.join('; ') + ' -- worth a manual look.';
-      $('spxstrikeproxalert').style.display = '';
-    } else {
-      $('spxstrikeproxalert').style.display = 'none';
-    }
-
-    // 2026-08-17: dealer gamma / GEX wall (p.gex_wall, see spx_forward_
-    // test.check_gex_wall_shift()/gex_wall_snapshot()).
-    // spxgexwallline: ALWAYS shown when call_wall/put_wall are known,
-    // regardless of shift status -- gives visibility on a position (like
-    // trade #3) that has no entry baseline to compare against, so the
-    // shift banner below can never fire for it.
-    const gw = p.gex_wall;
-    if (gw && (gw.call_wall != null || gw.put_wall != null)) {
-      const hasBaseline = gw.entry_call_wall != null || gw.entry_put_wall != null;
-      const baselineNote = hasBaseline ? '' : ' (no entry baseline for this trade -- opened before this was tracked)';
-      $('spxgexwalltext').textContent =
-        `call ${gw.call_wall ?? '—'}, put ${gw.put_wall ?? '—'}` +
-        (hasBaseline ? ` (at entry: call ${gw.entry_call_wall ?? '—'}, put ${gw.entry_put_wall ?? '—'})` : baselineNote);
-      $('spxgexwallline').style.display = '';
-    } else {
-      $('spxgexwallline').style.display = 'none';
-    }
-
-    // spxgexwallalert: only shown when a shift has actually been DETECTED
-    // (requires an entry baseline -- structurally impossible without one,
-    // e.g. trade #3). Not noise-shown every cycle otherwise.
-    if (gw && (gw.call_shifted || gw.put_shifted)) {
-      const parts = [];
-      if (gw.call_shifted) parts.push(`call wall ${gw.entry_call_wall} → ${gw.call_wall}`);
-      if (gw.put_shifted) parts.push(`put wall ${gw.entry_put_wall} → ${gw.put_wall}`);
-      $('spxgexwalldetail').textContent = parts.join(', ') +
-        ` (your strikes: call ${p.kc_s}/${p.kc_l}, put ${p.kp_s}/${p.kp_l})`;
-      $('spxgexwallalert').style.display = '';
-    } else {
-      $('spxgexwallalert').style.display = 'none';
-    }
-  } else {
-    $('spxopencards').style.display = 'none';
-    $('spxriskcards').style.display = 'none';
-    $('spxriskcaveat').style.display = 'none';
-    $('spxpnlattr').style.display = 'none';
-    $('spxstrikeproxline').style.display = 'none';
-    $('spxstrikeproxalert').style.display = 'none';
-    $('spxgexwallline').style.display = 'none';
-    $('spxgexwallalert').style.display = 'none';
-    $('spxnoposition').style.display = '';
-  }
+    const u = p.unrealized_pnl;
+    const uTxt = u != null ? (u>=0?'+':'') + money(u).replace('$-','-$') : '—';
+    const uCls = u != null ? (u>0?'green':u<0?'red':'') : '';
+    el.innerHTML = label + `${liveTag} ${p.regime || '—'} exp ${p.expiry || '—'} &middot; unrealized <span class="${uCls}">${uTxt}</span> &middot; ${trTxt}`;
+  })();
 
   // 2026-08-23: standalone SPX Closed table (#spxclosedtable) removed --
   // SPX's real closed trades now render as MrS-tagged rows in the
