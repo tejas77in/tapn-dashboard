@@ -52,7 +52,11 @@ PAGES = [
     ("dashboard.html", "index.html"),
     ("moonshot.html", "moonshot.html"),
     ("iv_edge.html", "iv_edge.html"),
-    ("ivcrush.html", "ivcrush.html"),
+    # 2026-09-19: ivcrush.html removed -- IV Crush deleted (10.5% win rate,
+    # negative signal). mrstonk.html will be added here once built.
+    ("smart_money.html", "smart_money.html"),  # 2026-09-14: Smart Money tab
+    ("spx_multistrat.html", "spx_multistrat.html"),  # 2026-09-15: SPX Multi-Structure tab
+    ("leap_conviction.html", "leap_conviction.html"),  # 2026-09-15: LEAP Conviction tab
 ]
 
 GATE_CSS = """  /* --- password gate (added for the published Vercel copy only -- not

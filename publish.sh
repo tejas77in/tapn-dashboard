@@ -50,7 +50,7 @@ cp "$TAPN_DIR/dashboard_data.js" ./dashboard_data.js
 # hasn't changed since the last run.
 python3 build_index.py
 
-git add dashboard_data.js index.html moonshot.html iv_edge.html ivcrush.html
+git add dashboard_data.js index.html moonshot.html iv_edge.html smart_money.html spx_multistrat.html leap_conviction.html
 if git diff --cached --quiet; then
   echo "No changes since last publish -- nothing to push."
   exit 0

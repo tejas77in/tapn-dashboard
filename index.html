@@ -89,7 +89,6 @@
   <a href="index.html" class="active">Dashboard</a>
   <a href="moonshot.html">Moonshot</a>
   <a href="iv_edge.html">IV Edge</a>
-  <a href="ivcrush.html">IV Crush</a>
   <a href="smart_money.html">Smart Money</a>
   <a href="spx_multistrat.html">SPX Multi-Structure</a>
   <a href="leap_conviction.html">LEAP Conviction</a>
@@ -390,7 +389,6 @@
      content above. -->
 <div id="ivedgesummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 <div id="moonshotsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
-<div id="ivcrushsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 <div id="spxmultisummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 <div id="leapsummary" class="empty" style="text-align:left;padding:10px 14px">—</div>
 
@@ -647,26 +645,8 @@ window.toggleMwGroup = function(groupKey, headerEl) {
     el.innerHTML = label + `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
   })();
 
-  // 2026-09-10: IV Crush per-ticker table -- d.ivcrush.trades (see
-  // ivcrush_paper.py's dashboard_snapshot()). Same fail-open convention
-  // as every other strategy table above.
-  // 2026-09-14: full per-trade table moved to ivcrush.html (per explicit
-  // request, alongside Moonshot/iv_edge) -- this now just renders a
-  // one-line open/closed + $ summary so the main dashboard stays compact.
-  (function(){
-    const el = $('ivcrushsummary');
-    if (!el) return;
-    const label = '<b>IV Crush</b> <a href="ivcrush.html" style="color:var(--blue)">full table &rarr;</a> &middot; ';
-    const trades = (d.ivcrush && d.ivcrush.trades) || [];
-    if (!trades.length) { el.innerHTML = label + 'No IV Crush trades yet'; return; }
-    const open = trades.filter(t => t.status === 'open').length;
-    const closed = trades.length - open;
-    const realized = trades.reduce((s, t) => s + (t.realized_pnl || 0), 0);
-    const unrealized = trades.reduce((s, t) => s + (t.last_unrealized_pnl || 0), 0);
-    const rCls = realized > 0 ? 'green' : realized < 0 ? 'red' : '';
-    const uCls = unrealized > 0 ? 'green' : unrealized < 0 ? 'red' : '';
-    el.innerHTML = label + `${trades.length} trades (${open} open, ${closed} closed) &middot; unrealized <span class="${uCls}">${unrealized >= 0 ? '+' : ''}${money(unrealized).replace('$-', '-$')}</span> &middot; realized <span class="${rCls}">${realized >= 0 ? '+' : ''}${money(realized).replace('$-', '-$')}</span>`;
-  })();
+  // 2026-09-19: IV Crush summary block removed -- IV Crush deleted entirely.
+  // MRStonk summary will be added here once mrstonk_paper.py exists.
 
   // 2026-09-15: SPX Multi-Structure summary -- d.spxmulti.trades (see
   // spx_multistrat_paper.py's dashboard_snapshot()). Same compact
