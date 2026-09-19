@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<title>TAPN Trading Technologies — Moonshot Paper Trades</title>
+<title>TAPN Trading Technologies — MRStonk</title>
 <style>
   :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --dim:#8b949e;
           --green:#3fb950; --red:#f85149; --amber:#d29922; --blue:#58a6ff; }
@@ -19,14 +19,6 @@
   .green{color:var(--green)} .red{color:var(--red)} .amber{color:var(--amber)} .blue{color:var(--blue)}
   .empty { color:var(--dim); padding:16px; text-align:center; }
   .stale { background:#3d2c1f; border:1px solid var(--amber); color:var(--amber); padding:10px 14px; border-radius:8px; margin-bottom:16px; display:none; }
-  /* 2026-09-14: shared tab bar linking dashboard.html <-> moonshot.html <->
-     iv_edge.html <-> ivcrush.html (per explicit request, "moonshot paper
-     trade is getting big.. create a tab that lands to a different page for
-     that table and even IV edge and IV Crush"). build_index.py rewrites
-     the "Dashboard" tab's href from dashboard.html -> index.html when
-     publishing to Vercel (see that script's docstring) -- every OTHER
-     link here keeps the same filename locally and published, so it works
-     unmodified in both places. -->
   .navtabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
   .navtabs a { padding:6px 14px; border-radius:6px; background:var(--card); border:1px solid var(--border);
     color:var(--text); text-decoration:none; font-size:13px; }
@@ -66,27 +58,23 @@
 <div class="navtabs">
   <a href="index.html">Dashboard</a>
   <a href="spx_live.html" id="navspxlive">SPX Live</a>
-  <a href="moonshot.html" id="navmoonshot" class="active">Moonshot</a>
+  <a href="moonshot.html" id="navmoonshot">Moonshot</a>
   <a href="smart_money.html" id="navsmartmoney">Smart Money</a>
   <a href="spx_multistrat.html" id="navspxmulti">SPX Multi-Structure</a>
   <a href="leap_conviction.html" id="navleap">LEAP Conviction</a>
-  <a href="mrstonk.html" id="navmrstonk">MRStonk</a>
+  <a href="mrstonk.html" id="navmrstonk" class="active">MRStonk</a>
 </div>
 
-<!-- 2026-09-10: Moonshot (far-OTM low-IV vertical, 90-365 DTE, paper-only
-     research track) per-ticker table -- added per "I dont see the trades
-     on dashboard": this strategy's paper trades were logging fine to
-     moonshot_trades.db the whole time, write_dashboard() just never
-     carried them into dashboard_data.js until now. d.moonshot.trades
-     (see vertical_moonshot_scanner.py's dashboard_snapshot()). Still
-     100% paper -- no real capital, shown here purely for visibility,
-     same convention as the iv_edge table. Full table moved here from the
-     main dashboard on 2026-09-14. 2026-09-15: heading moved here too --
-     main dashboard is reserved for live/real-money trading details only,
-     per explicit request. -->
-<h2>Moonshot Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(far-OTM low-IV verticals, 90-365 DTE, 10x-100x payout target -- research track, no real capital)</span></h2>
-<table id="moonshottable">
-  <thead><tr><th>Ticker</th><th>Status</th><th>Structure</th><th>Entry</th><th>Expiry</th><th>DTE</th><th>Debit</th><th>Payout</th><th>Entry POP</th><th>Current POP</th><th>Tape at Entry</th><th>Unrealized P&amp;L</th><th>Realized P&amp;L</th></tr></thead>
+<h2>MRStonk by Structure <span style="font-weight:400;color:var(--dim);font-size:11px">(routes MrWhales' flow-alert signal into one of 4 structures based on the flowed ticker's own IV regime at signal time -- low IV buys premium (debit spread), high IV sells premium (credit spread), middle band is a deliberate no-trade gap. See mrstonk_paper.py.)</span></h2>
+<table id="structuretable">
+  <thead><tr><th>Structure</th><th>Open</th><th>Closed</th><th>Win Rate</th><th>Realized P&amp;L</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>MRStonk Paper Trades <span style="font-weight:400;color:var(--dim);font-size:11px">(paper-only, marked/settled every cycle -- no live capital)</span></h2>
+<div id="mrsummary" style="display:flex;gap:24px;margin:12px 0;font-size:12px;color:var(--dim)"></div>
+<table id="mrtable">
+  <thead><tr><th>Ticker</th><th>Structure</th><th>Direction</th><th>Entry</th><th>Expiry</th><th>Strikes</th><th>Entry Price</th><th>Status</th><th>Unrealized/Realized P&amp;L</th><th>Exit Reason</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -95,10 +83,11 @@
 (function(){
   const d = window.BOT_DATA;
   const $ = id => document.getElementById(id);
-  const nav = document.getElementById('navmoonshot');
+  const nav = document.getElementById('navmrstonk');
   if (nav) nav.className = 'active';
   if (!d) { $('stale').style.display='block'; $('stale').textContent='No data yet — start bot.py and this page will populate.'; return; }
   const money = v => (v==null||isNaN(v)) ? '—' : '$' + Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const num = (v, dd) => (v==null||isNaN(v)) ? '—' : Number(v).toFixed(dd==null?0:dd);
   $('updated').textContent = d.updated || '—';
   $('mkt').textContent = d.market_open ? 'market OPEN' : 'market closed';
   try {
@@ -106,52 +95,72 @@
     if (Date.now() - ts.getTime() > 15*60*1000) $('stale').style.display='block';
   } catch(e){}
 
-  // 2026-09-10: Moonshot per-ticker table -- d.moonshot.trades (see
-  // vertical_moonshot_scanner.py's dashboard_snapshot()). Same fail-open
-  // convention as iv_edge above. Moved to its own page
-  // 2026-09-14 (per explicit request, "moonshot paper trade is getting
-  // big.. create a tab that lands to a different page") -- identical
-  // rendering logic, unchanged, just relocated off the main dashboard.
+  const mr = d.mrstonk || {};
+
   (function(){
-    const el = $('moonshottable');
+    const el = $('mrsummary');
+    if (!el) return;
+    const winTxt = mr.win_rate_pct != null ? mr.win_rate_pct + '%' : '—';
+    const pnlCls = (mr.total_realized_pnl||0) > 0 ? 'green' : (mr.total_realized_pnl||0) < 0 ? 'red' : '';
+    el.innerHTML = `<div><b>Total</b>: ${mr.total_trades||0} trades (${mr.open||0} open, ${mr.closed||0} closed)</div>` +
+                    `<div><b>Win rate</b>: ${winTxt}</div>` +
+                    `<div><b>Realized P&amp;L</b>: <span class="${pnlCls}">${money(mr.total_realized_pnl)}</span></div>` +
+                    `<div><b>Live structures</b>: ${(mr.live_structures||[]).length ? mr.live_structures.join(', ') : 'none (all paper)'}</div>`;
+  })();
+
+  (function(){
+    const el = $('structuretable');
     if (!el) return;
     const tb = el.querySelector('tbody');
-    const trades = (d.moonshot && d.moonshot.trades) || [];
+    const bs = mr.by_structure || {};
+    const keys = Object.keys(bs);
+    if (!keys.length) {
+      tb.innerHTML = '<tr><td colspan="5" class="empty">No MRStonk trades yet</td></tr>';
+      return;
+    }
+    tb.innerHTML = keys.map(k => {
+      const s = bs[k];
+      const pnlCls = (s.total_realized_pnl||0) > 0 ? 'green' : (s.total_realized_pnl||0) < 0 ? 'red' : '';
+      return `<tr>
+        <td><b>${k}</b></td>
+        <td>${s.open}</td>
+        <td>${s.closed}</td>
+        <td>${s.win_rate_pct != null ? s.win_rate_pct + '%' : '—'}</td>
+        <td class="${pnlCls}">${money(s.total_realized_pnl)}</td>
+      </tr>`;
+    }).join('');
+  })();
+
+  (function(){
+    const el = $('mrtable');
+    if (!el) return;
+    const tb = el.querySelector('tbody');
+    const trades = mr.trades || [];
     if (!trades.length) {
-      tb.innerHTML = '<tr><td colspan="13" class="empty">No Moonshot trades yet</td></tr>';
+      tb.innerHTML = '<tr><td colspan="10" class="empty">No MRStonk paper trades yet -- entered as MrWhales flow alerts fire</td></tr>';
       return;
     }
     tb.innerHTML = trades.map(t => {
-      const pnl = t.realized_pnl;
+      const isBullish = (t.direction || '').toLowerCase().includes('bull');
+      const dirCls = isBullish ? 'green' : 'red';
+      const strikes = (t.long_strike != null && t.short_strike != null)
+        ? `${num(t.long_strike,0)}/${num(t.short_strike,0)}${t.is_credit ? ' (credit)' : ' (debit)'}`
+        : '—';
+      const pnl = t.status === 'open' ? t.last_unrealized_pnl : t.realized_pnl;
       const pnlCls = pnl == null ? '' : (pnl > 0 ? 'green' : pnl < 0 ? 'red' : '');
       const pnlTxt = pnl == null ? '—' : (pnl >= 0 ? '+' : '') + money(pnl).replace('$-', '-$');
-      const statusTxt = t.status === 'open' ? 'open' : 'closed';
       const statusCls = t.status === 'open' ? 'amber' : '';
-      const structure = `${t.long_strike}/${t.short_strike}${t.direction === 'call' ? 'C' : 'P'}`;
-      const debitTxt = t.entry_debit != null ? money(t.entry_debit * 100) : '—';
-      const currentPopTxt = t.current_pop != null ? (t.current_pop * 100).toFixed(0) + '%' : '—';
-      const smLeanCls = t.sm_lean === 'bullish' ? 'green' : t.sm_lean === 'bearish' ? 'red' : '';
-      const smTxt = t.sm_trade_count ? `<span class="${smLeanCls}">${t.sm_lean || 'mixed'}</span>` +
-        ` (${t.sm_trade_count} trades, $${(t.sm_total_premium || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} prem` +
-        (t.sm_sweep_count ? `, ${t.sm_sweep_count} sweep` : '') +
-        (t.sm_block_count ? `, ${t.sm_block_count} block` : '') + ')' : '—';
-      const upnl = t.last_unrealized_pnl;
-      const upnlCls = upnl == null ? '' : (upnl > 0 ? 'green' : upnl < 0 ? 'red' : '');
-      const upnlTxt = upnl == null ? '—' : (upnl >= 0 ? '+' : '') + money(upnl).replace('$-', '-$');
       return `<tr>
-        <td>${t.ticker}</td>
-        <td class="${statusCls}">${statusTxt}</td>
-        <td>${structure}</td>
+        <td><b>${t.ticker}</b></td>
+        <td>${t.structure || '—'}</td>
+        <td class="${dirCls}">${t.direction || '—'}</td>
         <td>${t.entry_date || '—'}</td>
         <td>${t.expiry || '—'}</td>
-        <td>${t.dte_at_entry ?? '—'}</td>
-        <td>${debitTxt}</td>
-        <td>${t.payout_multiple != null ? t.payout_multiple + 'x' : '—'}</td>
-        <td>${t.entry_pop != null ? (t.entry_pop * 100).toFixed(0) + '%' : '—'}</td>
-        <td>${currentPopTxt}</td>
-        <td style="font-size:11px" title="Real premium/tag proxy -- cannot distinguish a hedge, a market-maker wall, or a pre-planned squeeze setup">${smTxt}</td>
-        <td class="${upnlCls}">${upnlTxt}</td>
+        <td>${strikes}</td>
+        <td>${t.entry_price != null ? money(t.entry_price) : '—'}</td>
+        <td class="${statusCls}">${t.status || '—'}</td>
         <td class="${pnlCls}">${pnlTxt}</td>
+        <td style="font-size:11px;color:var(--dim)">${t.exit_reason || '—'}</td>
       </tr>`;
     }).join('');
   })();

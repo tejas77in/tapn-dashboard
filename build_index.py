@@ -54,10 +54,11 @@ PAGES = [
     ("moonshot.html", "moonshot.html"),
     # 2026-09-19: iv_edge.html removed -- IV Edge deleted (thin/inconclusive, retired).
     # 2026-09-19: ivcrush.html removed -- IV Crush deleted (10.5% win rate,
-    # negative signal). mrstonk.html will be added here once built.
+    # negative signal). Replaced by mrstonk.html below.
     ("smart_money.html", "smart_money.html"),  # 2026-09-14: Smart Money tab
     ("spx_multistrat.html", "spx_multistrat.html"),  # 2026-09-15: SPX Multi-Structure tab
     ("leap_conviction.html", "leap_conviction.html"),  # 2026-09-15: LEAP Conviction tab
+    ("mrstonk.html", "mrstonk.html"),  # 2026-09-19: MRStonk tab
 ]
 
 GATE_CSS = """  /* --- password gate (added for the published Vercel copy only -- not
